@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import SearchForm from '../components/SearchForm'
-import EventCard from '../components/ui/card'
+import EventCard from '../components/EventCard'
 import { apiService } from '../services/api'
 import { Loader2, Search } from 'lucide-react'
 

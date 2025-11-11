@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiService } from '../services/api'
-import EventCard from '../components/ui/card'
+import EventCard from '../components/EventCard'
 import { Loader2, Heart } from 'lucide-react'
 
 function Favorites() {
