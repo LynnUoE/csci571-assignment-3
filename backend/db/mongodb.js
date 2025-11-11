@@ -1,16 +1,28 @@
 const { MongoClient } = require('mongodb');
 
-let client;
-let db;
+let db = null;
+let client = null;
 
 async function connectDB() {
-  if (db) return db;
-  
   try {
-    client = new MongoClient(process.env.MONGODB_URI);
+    if (db) {
+      return db;
+    }
+
+    const uri = process.env.MONGODB_URI;
+    
+    if (!uri) {
+      throw new Error('MONGODB_URI is not defined in environment variables');
+    }
+
+    client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 5000,
+    });
+
     await client.connect();
-    db = client.db('eventsDB');
-    console.log('✅ Connected to MongoDB');
+    console.log('✅ Connected to MongoDB Atlas');
+    
+    db = client.db('eventsDB'); // Database name
     return db;
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
@@ -25,4 +37,13 @@ async function getDB() {
   return db;
 }
 
-module.exports = { connectDB, getDB };
+async function closeDB() {
+  if (client) {
+    await client.close();
+    db = null;
+    client = null;
+    console.log('MongoDB connection closed');
+  }
+}
+
+module.exports = { connectDB, getDB, closeDB };
