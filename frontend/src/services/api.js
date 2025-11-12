@@ -82,11 +82,16 @@ export const apiService = {
 }
 
 // Google Geocoding API（直接从前端调用）
-// TODO: 替换为你的 Google Maps API Key
-const GOOGLE_API_KEY = 'AIzaSyDVHJ-kfmF8-Tn8Pvc8ZXQc_PdGO_8OqJo'
+// 从环境变量读取 API Key，如果没有则使用默认值
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
 
 export const geocodingService = {
   getCoordinates: async (address) => {
+    if (!GOOGLE_API_KEY) {
+      console.error('Google Maps API Key is not configured')
+      throw new Error('Google Maps API Key is missing. Please add VITE_GOOGLE_MAPS_API_KEY to your .env file')
+    }
+
     try {
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json`,
@@ -109,6 +114,9 @@ export const geocodingService = {
       throw new Error('Location not found')
     } catch (error) {
       console.error('Geocoding error:', error)
+      if (error.response?.data?.error_message) {
+        throw new Error(`Geocoding failed: ${error.response.data.error_message}`)
+      }
       throw new Error('Unable to geocode address')
     }
   }
@@ -118,7 +126,7 @@ export const geocodingService = {
 export const ipinfoService = {
   getCurrentLocation: async () => {
     try {
-      // IPinfo API 不需要 token 就可以获取基本信息
+      // IPinfo API 免费版本，不需要 token
       const response = await axios.get('https://ipinfo.io/json')
       
       if (response.data.loc) {
@@ -133,6 +141,7 @@ export const ipinfoService = {
     } catch (error) {
       console.error('Error getting location from IP:', error)
       // 默认返回洛杉矶的坐标
+      console.log('Using default location: Los Angeles, CA')
       return {
         lat: 34.0522,
         lng: -118.2437
