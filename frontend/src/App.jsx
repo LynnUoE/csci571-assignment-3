@@ -2,92 +2,53 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import Home from './pages/home.jsx'
 import Favorites from './pages/Favorites'
 import EventDetail from './pages/EventDetail'
-import { Menu } from 'lucide-react'
-import { useState } from 'react'
+import { Search as SearchIcon, Heart } from 'lucide-react'
 
 function NavBar() {
   const location = useLocation()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const isActive = (path) => {
     return location.pathname === path
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between h-16">
-          {/* Logo and Title */}
+    <nav className="bg-white border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16 items-center">
+          {/* Logo/Title */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Events Around</h1>
+            <Link to="/" className="text-xl font-bold text-gray-900">
+              Events Around
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
+          {/* Right side navigation */}
+          <div className="flex items-center space-x-6">
             <Link
               to="/"
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex items-center space-x-1 text-sm ${
                 isActive('/')
-                  ? 'bg-gray-100 text-gray-900'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Search
+              <SearchIcon className="h-4 w-4" />
+              <span>Search</span>
             </Link>
+            
             <Link
               to="/favorites"
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex items-center space-x-1 text-sm ${
                 isActive('/favorites')
-                  ? 'bg-gray-100 text-gray-900'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Favorites
+              <Heart className="h-4 w-4" />
+              <span>Favorites</span>
             </Link>
           </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-          </div>
         </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden pb-3">
-            <div className="flex flex-col space-y-1">
-              <Link
-                to="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  isActive('/')
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                Search
-              </Link>
-              <Link
-                to="/favorites"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  isActive('/favorites')
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                Favorites
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   )
@@ -96,10 +57,10 @@ function NavBar() {
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <NavBar />
         
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/favorites" element={<Favorites />} />

@@ -123,11 +123,18 @@ export const geocodingService = {
 }
 
 // IPinfo API（获取用户位置）
+// 从环境变量读取 Token（可选）
+const IPINFO_TOKEN = import.meta.env.VITE_IPINFO_TOKEN || 'bf8f570fb8f455'
+
 export const ipinfoService = {
   getCurrentLocation: async () => {
     try {
-      // IPinfo API 免费版本，不需要 token
-      const response = await axios.get('https://ipinfo.io/json')
+      // 使用 Token 访问 IPinfo API
+      const url = IPINFO_TOKEN 
+        ? `https://ipinfo.io/json?token=${IPINFO_TOKEN}`
+        : 'https://ipinfo.io/json'
+      
+      const response = await axios.get(url)
       
       if (response.data.loc) {
         const [lat, lng] = response.data.loc.split(',')

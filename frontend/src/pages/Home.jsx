@@ -18,12 +18,10 @@ function Home() {
     try {
       const data = await apiService.searchEvents(searchData)
       
-      // Extract events from response
       let eventsList = []
       if (data._embedded && data._embedded.events) {
         eventsList = data._embedded.events
         
-        // Sort by date ascending
         eventsList.sort((a, b) => {
           const dateA = new Date(a.dates?.start?.localDate || '9999-12-31')
           const dateB = new Date(b.dates?.start?.localDate || '9999-12-31')
@@ -48,14 +46,11 @@ function Home() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Title */}
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold">Events Search</h2>
-      </div>
-
+    <div>
       {/* Search Form */}
-      <SearchForm onSearch={handleSearch} onClear={handleClear} />
+      <div className="mb-8">
+        <SearchForm onSearch={handleSearch} onClear={handleClear} />
+      </div>
 
       {/* Loading State */}
       {loading && (
