@@ -1,144 +1,128 @@
-import axios from 'axios'
+// frontend/src/services/api.js
 
-// 创建 axios 实例
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 10000,
-})
+const API_BASE = '/api';
 
-// API 服务
 export const apiService = {
-  // 健康检查
-  healthCheck: async () => {
-    const response = await api.get('/health')
-    return response.data
-  },
-
-  // 获取事件建议（自动完成）
-  getEventSuggestions: async (keyword) => {
-    const response = await api.get('/events/suggest', {
-      params: { keyword }
-    })
-    return response.data
-  },
-
-  // 搜索事件
+  // Search events
   searchEvents: async (params) => {
-    const { keyword, lat, lng, radius, category } = params
-    const response = await api.get('/events/search', {
-      params: {
-        keyword,
-        lat,
-        lng,
-        radius,
-        ...(category && { segmentId: category })
+    const queryString = new URLSearchParams(params).toString();
+    const response = await fetch(`${API_BASE}/events/search?${queryString}`);
+    if (!response.ok) {
+      throw new Error('Failed to search events');
+    }
+    return response.json();
+  },
+
+  // Get event details by ID
+  getEventById: async (id) => {
+    const response = await fetch(`${API_BASE}/events/${id}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Event not found');
       }
-    })
-    return response.data
+      throw new Error('Failed to fetch event details');
+    }
+    return response.json();
   },
 
-  // 获取事件详情
-  getEventDetails: async (eventId) => {
-    const response = await api.get(`/events/${eventId}`)
-    return response.data
+  // Get autocomplete suggestions
+  getSuggestions: async (keyword) => {
+    const response = await fetch(`${API_BASE}/events/suggest?keyword=${encodeURIComponent(keyword)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch suggestions');
+    }
+    return response.json();
   },
 
-  // 搜索艺术家信息（Spotify）
-  searchArtist: async (keyword) => {
-    const response = await api.get('/artists/search', {
-      params: { keyword }
-    })
-    return response.data
-  },
-
-  // 获取收藏列表
+  // Favorites API
   getFavorites: async () => {
-    const response = await api.get('/favorites')
-    return response.data
+    const response = await fetch(`${API_BASE}/favorites`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch favorites');
+    }
+    return response.json();
   },
 
-  // 添加收藏
   addFavorite: async (event) => {
-    const response = await api.post('/favorites', event)
-    return response.data
+    const response = await fetch(`${API_BASE}/favorites`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to add favorite');
+    }
+    
+    return response.json();
   },
 
-  // 删除收藏
   removeFavorite: async (eventId) => {
-    const response = await api.delete(`/favorites/${eventId}`)
-    return response.data
+    const response = await fetch(`${API_BASE}/favorites/${eventId}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Favorite not found');
+      }
+      throw new Error('Failed to remove favorite');
+    }
+    
+    return response.json();
   },
 
-  // 检查是否已收藏
   isFavorite: async (eventId) => {
     try {
-      const response = await api.get(`/favorites/${eventId}`)
-      return response.data
-    } catch (error) {
-      // If not found, return false
-      return { isFavorite: false }
-    }
-  }
-}
-
-// Google Geocoding API（直接从前端调用）
-// TODO: 替换为你的 Google Maps API Key
-const GOOGLE_API_KEY = 'AIzaSyDVHJ-kfmF8-Tn8Pvc8ZXQc_PdGO_8OqJo'
-
-export const geocodingService = {
-  getCoordinates: async (address) => {
-    try {
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/geocode/json`,
-        {
-          params: {
-            address,
-            key: GOOGLE_API_KEY
-          }
-        }
-      )
-      
-      if (response.data.results && response.data.results.length > 0) {
-        const location = response.data.results[0].geometry.location
-        return {
-          lat: location.lat,
-          lng: location.lng
-        }
+      const response = await fetch(`${API_BASE}/favorites/check/${eventId}`);
+      if (!response.ok) {
+        // If event not found, it's not a favorite
+        return { isFavorite: false };
       }
-      
-      throw new Error('Location not found')
+      return response.json();
     } catch (error) {
-      console.error('Geocoding error:', error)
-      throw new Error('Unable to geocode address')
+      // If any error occurs, assume not favorite
+      console.error('Error checking favorite status:', error);
+      return { isFavorite: false };
     }
-  }
-}
+  },
 
-// IPinfo API（获取用户位置）
-export const ipinfoService = {
-  getCurrentLocation: async () => {
-    try {
-      // IPinfo API 不需要 token 就可以获取基本信息
-      const response = await axios.get('https://ipinfo.io/json')
-      
-      if (response.data.loc) {
-        const [lat, lng] = response.data.loc.split(',')
-        return {
-          lat: parseFloat(lat),
-          lng: parseFloat(lng)
-        }
-      }
-      
-      throw new Error('Unable to get location from IP')
-    } catch (error) {
-      console.error('Error getting location from IP:', error)
-      // 默认返回洛杉矶的坐标
-      return {
-        lat: 34.0522,
-        lng: -118.2437
-      }
+  // Artist/Spotify API
+  searchArtist: async (artistName) => {
+    const response = await fetch(`${API_BASE}/artists/search?name=${encodeURIComponent(artistName)}`);
+    if (!response.ok) {
+      throw new Error('Failed to search artist');
     }
-  }
-}
+    return response.json();
+  },
 
-export default api
+  getArtistDetails: async (artistId) => {
+    const response = await fetch(`${API_BASE}/artists/${artistId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch artist details');
+    }
+    return response.json();
+  },
+
+  getArtistAlbums: async (artistId) => {
+    const response = await fetch(`${API_BASE}/artists/${artistId}/albums`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch artist albums');
+    }
+    return response.json();
+  },
+
+  // Venue API
+  getVenueDetails: async (venueName) => {
+    const response = await fetch(`${API_BASE}/events/venue/${encodeURIComponent(venueName)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch venue details');
+    }
+    return response.json();
+  },
+};
+
+export default apiService;

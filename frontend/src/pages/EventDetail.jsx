@@ -1,174 +1,155 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { apiService } from '../services/api'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
-import { Button } from '../components/ui/button'
-import { ChevronLeft, ExternalLink, Loader2, Heart } from 'lucide-react'
-import { Facebook, Twitter } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ExternalLink, Heart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-function EventDetail() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [event, setEvent] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [isFavorite, setIsFavorite] = useState(false)
+export default function EventDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
-    loadEventDetail()
-  }, [id])
-
-  const loadEventDetail = async () => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const data = await apiService.getEventDetails(id)
-      setEvent(data)
-      
-      // Check if event is in favorites
+    const fetchEventDetails = async () => {
       try {
-        const favorites = await apiService.getFavorites()
-        setIsFavorite(favorites.some(fav => fav.id === id))
+        setLoading(true);
+        const response = await fetch(`/api/events/${id}`);
+        if (!response.ok) throw new Error('Failed to fetch event details');
+        const data = await response.json();
+        setEvent(data);
+        
+        // Check if event is in favorites
+        const favoritesResponse = await fetch('/api/favorites');
+        const favorites = await favoritesResponse.json();
+        setIsFavorite(favorites.some(fav => fav.id === id));
       } catch (err) {
-        console.error('Error checking favorites:', err)
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Error loading event details:', err)
-      setError('Failed to load event details')
-    } finally {
-      setLoading(false)
-    }
-  }
+    };
 
-  const toggleFavorite = async () => {
+    fetchEventDetails();
+  }, [id]);
+
+  const handleFavoriteToggle = async () => {
     try {
       if (isFavorite) {
-        await apiService.removeFavorite(id)
-        setIsFavorite(false)
+        await fetch(`/api/favorites/${id}`, { method: 'DELETE' });
+        setIsFavorite(false);
       } else {
-        await apiService.addFavorite(event)
-        setIsFavorite(true)
+        await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(event)
+        });
+        setIsFavorite(true);
       }
     } catch (err) {
-      console.error('Error toggling favorite:', err)
+      console.error('Failed to toggle favorite:', err);
     }
-  }
+  };
 
-  // Get ticket status color based on code
-  const getTicketStatusColor = (status) => {
-    if (!status) return 'bg-gray-500'
-    const code = status.toLowerCase()
-    
-    if (code.includes('onsale') || code === 'on sale') return 'bg-green-500'
-    if (code.includes('offsale') || code === 'off sale') return 'bg-red-500'
-    if (code.includes('cancel')) return 'bg-black'
-    if (code.includes('postponed') || code.includes('reschedule')) return 'bg-orange-500'
-    
-    return 'bg-gray-500'
-  }
-
-  // Format date to display format
+  // Helper functions for formatting
   const formatDate = (dateStr) => {
-    if (!dateStr) return ''
-    const date = new Date(dateStr)
+    const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
       month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    })
-  }
+      day: 'numeric' 
+    });
+  };
 
-  // Format time
   const formatTime = (timeStr) => {
-    if (!timeStr) return ''
-    const [hours, minutes] = timeStr.split(':')
-    const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
-    const displayHour = hour % 12 || 12
-    return `${displayHour}:${minutes} ${ampm}`
-  }
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
 
-  // Get seatmap URL
+  const getTicketStatusColor = (status) => {
+    const statusLower = status?.toLowerCase();
+    if (statusLower === 'onsale') return 'bg-green-500';
+    if (statusLower === 'offsale') return 'bg-red-500';
+    if (statusLower === 'canceled' || statusLower === 'cancelled') return 'bg-black';
+    if (statusLower === 'postponed' || statusLower === 'rescheduled') return 'bg-orange-500';
+    return 'bg-gray-500';
+  };
+
   const getSeatmapUrl = () => {
-    return event?.seatmap?.staticUrl || null
-  }
+    return event?.seatmap?.staticUrl || null;
+  };
 
-  // Share on Facebook
-  const shareOnFacebook = () => {
-    const url = event?.url || window.location.href
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank')
-  }
-
-  // Share on Twitter
-  const shareOnTwitter = () => {
-    const text = `Check ${event?.name || 'this event'} on Ticketmaster`
-    const url = event?.url || window.location.href
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank')
-  }
+  const handleShare = (platform) => {
+    const eventUrl = event?.url || '';
+    const eventName = event?.name || '';
+    
+    if (platform === 'facebook') {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(eventUrl)}`, '_blank');
+    } else if (platform === 'twitter') {
+      const text = `Check ${eventName} on Ticketmaster.`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(eventUrl)}`, '_blank');
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="h-12 w-12 animate-spin text-gray-400 mb-4" />
-        <p className="text-gray-500">Loading event details...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading event details...</div>
       </div>
-    )
+    );
   }
 
   if (error || !event) {
     return (
-      <div className="max-w-7xl mx-auto px-4">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/')}
-          className="mb-4"
-        >
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Back to Search
-        </Button>
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-          {error || 'Event not found'}
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-500">Error loading event details</div>
       </div>
-    )
+    );
   }
 
+  // Check if this is a music event
+  const isMusicEvent = event.classifications?.[0]?.segment?.name?.toLowerCase() === 'music';
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="container mx-auto px-4 py-6 max-w-7xl">
       {/* Back Button */}
-      <button
-        onClick={() => navigate('/')}
-        className="mb-4 -ml-2 text-sm hover:bg-transparent p-0 text-gray-600 inline-flex items-center"
+      <Button
+        variant="ghost"
+        onClick={() => navigate(-1)}
+        className="mb-4 px-0 hover:bg-transparent"
       >
-        <ChevronLeft className="h-4 w-4 mr-1" />
+        <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Search
-      </button>
+      </Button>
 
       {/* Event Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold break-words">
-          {event.name}
-        </h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-3xl font-bold">{event.name}</h1>
         
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex gap-2">
+          {/* Buy Tickets Button */}
           {event.url && (
-            <a 
-              href={event.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white h-10 px-4 rounded-md text-sm font-medium transition-colors"
+            <Button
+              onClick={() => window.open(event.url, '_blank')}
+              className="bg-black hover:bg-gray-800"
             >
-              <span>Buy Tickets</span>
-              <ExternalLink className="h-4 w-4" />
-            </a>
+              Buy Tickets
+              <ExternalLink className="h-4 w-4 ml-2" />
+            </Button>
           )}
           
+          {/* Favorite Button */}
           <Button
             variant="outline"
             size="icon"
-            onClick={toggleFavorite}
-            className={isFavorite ? 'text-red-500 border-red-500 hover:bg-red-50' : 'hover:bg-gray-100'}
+            onClick={handleFavoriteToggle}
+            className={isFavorite ? 
+              'text-red-500 border-red-500 hover:bg-red-50' : 'hover:bg-gray-100'}
           >
             <Heart 
               className={`h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`}
@@ -181,12 +162,14 @@ function EventDetail() {
       <Tabs defaultValue="info" className="w-full">
         <TabsList className="w-full">
           <TabsTrigger value="info">Info</TabsTrigger>
-          <TabsTrigger value="artist">Artist</TabsTrigger>
+          <TabsTrigger value="artist" disabled={!isMusicEvent}>
+            Artist
+          </TabsTrigger>
           <TabsTrigger value="venue">Venue</TabsTrigger>
         </TabsList>
 
         {/* Info Tab Content */}
-        <TabsContent value="info">
+        <TabsContent value="info" className="mt-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             {/* Left Column - Event Information */}
             <div className="space-y-5">
@@ -248,10 +231,8 @@ function EventDetail() {
               {/* Ticket Status */}
               {event.dates?.status?.code && (
                 <div>
-                  <h3 className="text-gray-600 text-sm mb-2">Ticket Status</h3>
-                  <span 
-                    className={`${getTicketStatusColor(event.dates.status.code)} text-white px-3 py-1 rounded text-sm font-medium inline-block`}
-                  >
+                  <h3 className="text-gray-600 text-sm mb-1">Ticket Status</h3>
+                  <span className={`inline-block px-3 py-1 rounded text-white text-sm ${getTicketStatusColor(event.dates.status.code)}`}>
                     {event.dates.status.code}
                   </span>
                 </div>
@@ -261,35 +242,38 @@ function EventDetail() {
               {event.url && (
                 <div>
                   <h3 className="text-gray-600 text-sm mb-1">Buy Ticket At</h3>
-                  <a
-                    href={event.url}
-                    target="_blank"
+                  <a 
+                    href={event.url} 
+                    target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline inline-flex items-center font-normal"
+                    className="text-blue-600 hover:underline"
                   >
                     Ticketmaster
-                    <ExternalLink className="ml-1 h-3 w-3" />
                   </a>
                 </div>
               )}
 
-              {/* Share */}
+              {/* Share Icons */}
               <div>
                 <h3 className="text-gray-600 text-sm mb-2">Share</h3>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <button
-                    onClick={shareOnFacebook}
-                    className="p-2 rounded-md hover:bg-gray-100 transition-colors border border-gray-300"
+                    onClick={() => handleShare('facebook')}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     aria-label="Share on Facebook"
                   >
-                    <Facebook className="h-5 w-5 text-gray-700" />
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
                   </button>
                   <button
-                    onClick={shareOnTwitter}
-                    className="p-2 rounded-md hover:bg-gray-100 transition-colors border border-gray-300"
+                    onClick={() => handleShare('twitter')}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     aria-label="Share on Twitter"
                   >
-                    <Twitter className="h-5 w-5 text-gray-700" />
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -316,9 +300,9 @@ function EventDetail() {
         </TabsContent>
 
         {/* Artist Tab Content */}
-        <TabsContent value="artist">
+        <TabsContent value="artist" className="mt-6">
           <div className="space-y-8">
-            {event._embedded?.attractions && event._embedded.attractions.length > 0 ? (
+            {isMusicEvent && event._embedded?.attractions && event._embedded.attractions.length > 0 ? (
               <>
                 {/* Artist Info Card */}
                 {event._embedded.attractions[0] && (
@@ -395,62 +379,62 @@ function EventDetail() {
         </TabsContent>
 
         {/* Venue Tab Content */}
-        <TabsContent value="venue">
+        <TabsContent value="venue" className="mt-6">
           <div className="space-y-6 max-w-4xl">
             {event._embedded?.venues?.[0] ? (
               <>
-                {/* Venue Name and Address */}
-                <div>
-                  <h2 className="text-2xl font-bold mb-3">{event._embedded.venues[0].name}</h2>
-                  {event._embedded.venues[0].address && (
-                    <div className="mb-4">
-                      {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
-                        <a
-                          href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline inline-flex items-center gap-1"
-                        >
-                          {[
-                            event._embedded.venues[0].address.line1,
-                            event._embedded.venues[0].city?.name,
-                            event._embedded.venues[0].state?.name || event._embedded.venues[0].state?.stateCode
-                          ].filter(Boolean).join(', ')}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <p className="text-gray-700">
-                          {[
-                            event._embedded.venues[0].address.line1,
-                            event._embedded.venues[0].city?.name,
-                            event._embedded.venues[0].state?.name || event._embedded.venues[0].state?.stateCode
-                          ].filter(Boolean).join(', ')}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
+                {/* Venue Name and Header */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-3">{event._embedded.venues[0].name}</h2>
+                    {event._embedded.venues[0].address && (
+                      <div className="mb-4">
+                        {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
+                          <a
+                            href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            {[
+                              event._embedded.venues[0].address.line1,
+                              event._embedded.venues[0].city?.name,
+                              event._embedded.venues[0].state?.stateCode
+                            ].filter(Boolean).join(', ')}
+                          </a>
+                        ) : (
+                          <p className="text-sm text-gray-600">
+                            {[
+                              event._embedded.venues[0].address.line1,
+                              event._embedded.venues[0].city?.name,
+                              event._embedded.venues[0].state?.stateCode
+                            ].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
                   {/* See Events Button */}
                   {event._embedded.venues[0].url && (
-                    <a 
-                      href={event._embedded.venues[0].url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium border border-input hover:bg-accent hover:text-accent-foreground transition-colors"
+                    <Button
+                      onClick={() => window.open(event._embedded.venues[0].url, '_blank')}
+                      variant="outline"
+                      className="flex items-center gap-2"
                     >
-                      <span>See Events</span>
+                      See Events
                       <ExternalLink className="h-4 w-4" />
-                    </a>
+                    </Button>
                   )}
                 </div>
 
                 {/* Venue Image */}
                 {event._embedded.venues[0].images?.[0] && (
-                  <div className="rounded-lg overflow-hidden border">
+                  <div className="rounded-lg overflow-hidden">
                     <img
                       src={event._embedded.venues[0].images[0].url}
                       alt={event._embedded.venues[0].name}
-                      className="w-full max-w-md"
+                      className="w-full h-64 object-cover"
                     />
                   </div>
                 )}
@@ -458,8 +442,8 @@ function EventDetail() {
                 {/* Parking Info */}
                 {event._embedded.venues[0].parkingDetail && (
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Parking</h3>
-                    <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                    <h3 className="font-semibold mb-2">Parking</h3>
+                    <p className="text-sm text-gray-700 whitespace-pre-line">
                       {event._embedded.venues[0].parkingDetail}
                     </p>
                   </div>
@@ -468,8 +452,8 @@ function EventDetail() {
                 {/* General Rule */}
                 {event._embedded.venues[0].generalInfo?.generalRule && (
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">General Rule</h3>
-                    <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                    <h3 className="font-semibold mb-2">General Rule</h3>
+                    <p className="text-sm text-gray-700 whitespace-pre-line">
                       {event._embedded.venues[0].generalInfo.generalRule}
                     </p>
                   </div>
@@ -478,8 +462,8 @@ function EventDetail() {
                 {/* Child Rule */}
                 {event._embedded.venues[0].generalInfo?.childRule && (
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Child Rule</h3>
-                    <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                    <h3 className="font-semibold mb-2">Child Rule</h3>
+                    <p className="text-sm text-gray-700 whitespace-pre-line">
                       {event._embedded.venues[0].generalInfo.childRule}
                     </p>
                   </div>
@@ -494,7 +478,5 @@ function EventDetail() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
-
-export default EventDetail
