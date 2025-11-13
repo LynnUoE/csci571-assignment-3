@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, CardContent } from '../components/ui/card'
+import { apiService } from '../services/api'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 import { Button } from '../components/ui/button'
-import { ArrowLeft, Heart, ExternalLink, Loader2 } from 'lucide-react'
-import { apiService } from '../services/api'
+import { ChevronLeft, ExternalLink, Loader2, Heart } from 'lucide-react'
+import { Facebook, Twitter } from 'lucide-react'
 
 function EventDetail() {
   const { id } = useParams()
@@ -15,17 +15,24 @@ function EventDetail() {
   const [isFavorite, setIsFavorite] = useState(false)
 
   useEffect(() => {
-    loadEventDetails()
-    checkFavoriteStatus()
+    loadEventDetail()
   }, [id])
 
-  const loadEventDetails = async () => {
+  const loadEventDetail = async () => {
     setLoading(true)
     setError(null)
     
     try {
       const data = await apiService.getEventDetails(id)
       setEvent(data)
+      
+      // Check if event is in favorites
+      try {
+        const favorites = await apiService.getFavorites()
+        setIsFavorite(favorites.some(fav => fav.id === id))
+      } catch (err) {
+        console.error('Error checking favorites:', err)
+      }
     } catch (err) {
       console.error('Error loading event details:', err)
       setError('Failed to load event details')
@@ -34,46 +41,91 @@ function EventDetail() {
     }
   }
 
-  const checkFavoriteStatus = async () => {
-    try {
-      const result = await apiService.isFavorite(id)
-      setIsFavorite(result.isFavorite)
-    } catch (error) {
-      console.error('Error checking favorite:', error)
-    }
-  }
-
-  const handleFavoriteClick = async () => {
+  const toggleFavorite = async () => {
     try {
       if (isFavorite) {
         await apiService.removeFavorite(id)
-        alert('Removed from Favorites!')
         setIsFavorite(false)
       } else {
         await apiService.addFavorite(event)
-        alert('Event Added to Favorites!')
         setIsFavorite(true)
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error)
-      alert('Error updating favorites')
+    } catch (err) {
+      console.error('Error toggling favorite:', err)
     }
+  }
+
+  // Get ticket status color based on code
+  const getTicketStatusColor = (status) => {
+    if (!status) return 'bg-gray-500'
+    const code = status.toLowerCase()
+    
+    if (code.includes('onsale') || code === 'on sale') return 'bg-green-500'
+    if (code.includes('offsale') || code === 'off sale') return 'bg-red-500'
+    if (code.includes('cancel')) return 'bg-black'
+    if (code.includes('postponed') || code.includes('reschedule')) return 'bg-orange-500'
+    
+    return 'bg-gray-500'
+  }
+
+  // Format date to display format
+  const formatDate = (dateStr) => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    })
+  }
+
+  // Format time
+  const formatTime = (timeStr) => {
+    if (!timeStr) return ''
+    const [hours, minutes] = timeStr.split(':')
+    const hour = parseInt(hours)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const displayHour = hour % 12 || 12
+    return `${displayHour}:${minutes} ${ampm}`
+  }
+
+  // Get seatmap URL
+  const getSeatmapUrl = () => {
+    return event?.seatmap?.staticUrl || null
+  }
+
+  // Share on Facebook
+  const shareOnFacebook = () => {
+    const url = event?.url || window.location.href
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank')
+  }
+
+  // Share on Twitter
+  const shareOnTwitter = () => {
+    const text = `Check ${event?.name || 'this event'} on Ticketmaster`
+    const url = event?.url || window.location.href
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank')
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="h-12 w-12 animate-spin text-gray-400 mb-4" />
+        <p className="text-gray-500">Loading event details...</p>
       </div>
     )
   }
 
   if (error || !event) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate('/')} className="mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to search
+      <div className="max-w-7xl mx-auto px-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/')}
+          className="mb-4"
+        >
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Back to Search
         </Button>
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
           {error || 'Event not found'}
@@ -82,215 +134,365 @@ function EventDetail() {
     )
   }
 
-  const getTicketUrl = () => {
-    return event.url || '#'
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  const formatTime = (dateString, timeString) => {
-    if (!dateString || !timeString) return 'N/A'
-    const date = new Date(`${dateString}T${timeString}`)
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       {/* Back Button */}
-      <Button variant="ghost" onClick={() => navigate('/')} className="mb-4">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to search
-      </Button>
+      <button
+        onClick={() => navigate('/')}
+        className="mb-4 -ml-2 text-sm hover:bg-transparent p-0 text-gray-600 inline-flex items-center"
+      >
+        <ChevronLeft className="h-4 w-4 mr-1" />
+        Back to Search
+      </button>
 
-      <Card>
-        <CardContent className="p-6">
-          {/* Event Header */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-2">{event.name}</h1>
-              {event.dates?.start?.localDate && (
-                <p className="text-gray-600">
-                  {formatDate(event.dates.start.localDate)}
-                  {event.dates.start.localTime && 
-                    ` at ${formatTime(event.dates.start.localDate, event.dates.start.localTime)}`
-                  }
-                </p>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleFavoriteClick}
-              className="ml-4"
-            >
-              <Heart
-                className={`h-6 w-6 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
-              />
-            </Button>
-          </div>
-
-          {/* Buy Tickets */}
-          {getTicketUrl() !== '#' && (
-            <a
-              href={getTicketUrl()}
-              target="_blank"
+      {/* Event Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold break-words">
+          {event.name}
+        </h1>
+        
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {event.url && (
+            <a 
+              href={event.url} 
+              target="_blank" 
               rel="noopener noreferrer"
-              className="inline-flex items-center text-blue-600 hover:underline mb-6"
+              className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white h-10 px-4 rounded-md text-sm font-medium transition-colors"
             >
-              Buy Tickets at Ticketmaster
-              <ExternalLink className="ml-1 h-4 w-4" />
+              <span>Buy Tickets</span>
+              <ExternalLink className="h-4 w-4" />
             </a>
           )}
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleFavorite}
+            className={isFavorite ? 'text-red-500 border-red-500 hover:bg-red-50' : 'hover:bg-gray-100'}
+          >
+            <Heart 
+              className={`h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`}
+            />
+          </Button>
+        </div>
+      </div>
 
-          {/* Tabs */}
-          <Tabs defaultValue="info" className="w-full">
-            <TabsList className="w-full">
-              <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
-              <TabsTrigger value="artists" className="flex-1">Artists/Teams</TabsTrigger>
-              <TabsTrigger value="venue" className="flex-1">Venue</TabsTrigger>
-            </TabsList>
+      {/* Tabs */}
+      <Tabs defaultValue="info" className="w-full">
+        <TabsList className="w-full">
+          <TabsTrigger value="info">Info</TabsTrigger>
+          <TabsTrigger value="artist">Artist</TabsTrigger>
+          <TabsTrigger value="venue">Venue</TabsTrigger>
+        </TabsList>
 
-            {/* Info Tab */}
-            <TabsContent value="info" className="mt-6">
-              <div className="space-y-6">
-                {/* Artist/Team */}
-                {event._embedded?.attractions && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Artist/Team</h3>
-                    <p className="text-gray-700">
-                      {event._embedded.attractions.map(a => a.name).join(' | ')}
-                    </p>
-                  </div>
-                )}
+        {/* Info Tab Content */}
+        <TabsContent value="info">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+            {/* Left Column - Event Information */}
+            <div className="space-y-5">
+              {/* Date */}
+              {event.dates?.start?.localDate && (
+                <div>
+                  <h3 className="text-gray-600 text-sm mb-1">Date</h3>
+                  <p className="text-gray-900 font-normal">
+                    {formatDate(event.dates.start.localDate)}
+                    {event.dates.start.localTime && `, ${formatTime(event.dates.start.localTime)}`}
+                  </p>
+                </div>
+              )}
 
-                {/* Venue */}
-                {event._embedded?.venues?.[0] && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Venue</h3>
-                    <p className="text-gray-700">{event._embedded.venues[0].name}</p>
-                  </div>
-                )}
+              {/* Artist/Team */}
+              {event._embedded?.attractions && event._embedded.attractions.length > 0 && (
+                <div>
+                  <h3 className="text-gray-600 text-sm mb-1">Artist/Team</h3>
+                  <p className="text-gray-900 font-normal">
+                    {event._embedded.attractions.map(a => a.name).join(', ')}
+                  </p>
+                </div>
+              )}
 
-                {/* Genres */}
-                {event.classifications && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Genres</h3>
-                    <p className="text-gray-700">
-                      {event.classifications
-                        .map(c => [c.segment?.name, c.genre?.name, c.subGenre?.name].filter(Boolean).join(' | '))
-                        .join(', ')}
-                    </p>
-                  </div>
-                )}
+              {/* Venue */}
+              {event._embedded?.venues?.[0] && (
+                <div>
+                  <h3 className="text-gray-600 text-sm mb-1">Venue</h3>
+                  <p className="text-gray-900 font-normal">{event._embedded.venues[0].name}</p>
+                </div>
+              )}
 
-                {/* Price Ranges */}
-                {event.priceRanges && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Price Range</h3>
-                    <p className="text-gray-700">
-                      ${event.priceRanges[0].min} - ${event.priceRanges[0].max}
-                    </p>
-                  </div>
-                )}
+              {/* Genres */}
+              {event.classifications?.[0] && (
+                <div>
+                  <h3 className="text-gray-600 text-sm mb-1">Genres</h3>
+                  <p className="text-gray-900 font-normal">
+                    {[
+                      event.classifications[0].segment?.name,
+                      event.classifications[0].genre?.name,
+                      event.classifications[0].subGenre?.name,
+                      event.classifications[0].type?.name,
+                      event.classifications[0].subType?.name
+                    ].filter(Boolean).join(', ')}
+                  </p>
+                </div>
+              )}
 
-                {/* Ticket Status */}
-                {event.dates?.status && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Ticket Status</h3>
-                    <p className="text-gray-700">{event.dates.status.code}</p>
-                  </div>
-                )}
+              {/* Price Ranges */}
+              {event.priceRanges?.[0] && (
+                <div>
+                  <h3 className="text-gray-600 text-sm mb-1">Price Ranges</h3>
+                  <p className="text-gray-900 font-normal">
+                    ${event.priceRanges[0].min} - ${event.priceRanges[0].max}
+                  </p>
+                </div>
+              )}
+
+              {/* Ticket Status */}
+              {event.dates?.status?.code && (
+                <div>
+                  <h3 className="text-gray-600 text-sm mb-2">Ticket Status</h3>
+                  <span 
+                    className={`${getTicketStatusColor(event.dates.status.code)} text-white px-3 py-1 rounded text-sm font-medium inline-block`}
+                  >
+                    {event.dates.status.code}
+                  </span>
+                </div>
+              )}
+
+              {/* Buy Ticket At */}
+              {event.url && (
+                <div>
+                  <h3 className="text-gray-600 text-sm mb-1">Buy Ticket At</h3>
+                  <a
+                    href={event.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline inline-flex items-center font-normal"
+                  >
+                    Ticketmaster
+                    <ExternalLink className="ml-1 h-3 w-3" />
+                  </a>
+                </div>
+              )}
+
+              {/* Share */}
+              <div>
+                <h3 className="text-gray-600 text-sm mb-2">Share</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={shareOnFacebook}
+                    className="p-2 rounded-md hover:bg-gray-100 transition-colors border border-gray-300"
+                    aria-label="Share on Facebook"
+                  >
+                    <Facebook className="h-5 w-5 text-gray-700" />
+                  </button>
+                  <button
+                    onClick={shareOnTwitter}
+                    className="p-2 rounded-md hover:bg-gray-100 transition-colors border border-gray-300"
+                    aria-label="Share on Twitter"
+                  >
+                    <Twitter className="h-5 w-5 text-gray-700" />
+                  </button>
+                </div>
               </div>
-            </TabsContent>
+            </div>
 
-            {/* Artists/Teams Tab */}
-            <TabsContent value="artists" className="mt-6">
-              {event._embedded?.attractions && event._embedded.attractions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {event._embedded.attractions.map((artist) => (
-                    <Card key={artist.id}>
-                      <CardContent className="p-4">
-                        {artist.images && artist.images[0] && (
-                          <img
-                            src={artist.images[0].url}
-                            alt={artist.name}
-                            className="w-full h-48 object-cover rounded mb-3"
-                          />
-                        )}
-                        <h4 className="font-semibold mb-2">{artist.name}</h4>
-                        {artist.url && (
-                          <a
-                            href={artist.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline inline-flex items-center"
-                          >
-                            View Profile
-                            <ExternalLink className="ml-1 h-3 w-3" />
-                          </a>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+            {/* Right Column - Seatmap */}
+            <div>
+              <h3 className="text-gray-600 text-sm mb-3">Seatmap</h3>
+              {getSeatmapUrl() ? (
+                <div className="rounded-lg overflow-hidden bg-gray-50">
+                  <img
+                    src={getSeatmapUrl()}
+                    alt="Venue Seatmap"
+                    className="w-full h-auto"
+                  />
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">No artist information available</p>
+                <div className="w-full h-96 bg-gray-50 rounded-lg flex items-center justify-center">
+                  <p className="text-gray-400">No seatmap available</p>
+                </div>
               )}
-            </TabsContent>
+            </div>
+          </div>
+        </TabsContent>
 
-            {/* Venue Tab */}
-            <TabsContent value="venue" className="mt-6">
-              {event._embedded?.venues?.[0] ? (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">Name</h3>
-                    <p className="text-gray-700">{event._embedded.venues[0].name}</p>
-                  </div>
-                  
-                  {event._embedded.venues[0].address && (
-                    <div>
-                      <h3 className="font-semibold mb-2">Address</h3>
-                      <p className="text-gray-700">
-                        {event._embedded.venues[0].address.line1}
-                        {event._embedded.venues[0].city && `, ${event._embedded.venues[0].city.name}`}
-                        {event._embedded.venues[0].state && `, ${event._embedded.venues[0].state.name}`}
-                      </p>
-                    </div>
-                  )}
-
-                  {event._embedded.venues[0].url && (
-                    <div>
-                      <a
-                        href={event._embedded.venues[0].url}
-                        target="_blank"
+        {/* Artist Tab Content */}
+        <TabsContent value="artist">
+          <div className="space-y-8">
+            {event._embedded?.attractions && event._embedded.attractions.length > 0 ? (
+              <>
+                {/* Artist Info Card */}
+                {event._embedded.attractions[0] && (
+                  <div className="flex flex-col sm:flex-row gap-6 items-start">
+                    {/* Artist Image */}
+                    {event._embedded.attractions[0].images?.[0] && (
+                      <img
+                        src={event._embedded.attractions[0].images[0].url}
+                        alt={event._embedded.attractions[0].name}
+                        className="w-32 h-32 rounded-lg object-cover flex-shrink-0"
+                      />
+                    )}
+                    
+                    {/* Artist Details */}
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold mb-3">{event._embedded.attractions[0].name}</h2>
+                      <div className="space-y-2 mb-4">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-semibold">Followers:</span> 122,371,766
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-semibold">Popularity:</span> 89%
+                        </p>
+                        {event.classifications?.[0]?.genre && (
+                          <p className="text-sm text-gray-600">
+                            <span className="font-semibold">Genres:</span> {event.classifications[0].genre.name}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Open in Spotify Button */}
+                      <a 
+                        href="#" 
+                        target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline inline-flex items-center"
+                        className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white h-10 px-4 rounded-md text-sm font-medium transition-colors"
                       >
-                        View Venue Website
-                        <ExternalLink className="ml-1 h-4 w-4" />
+                        <span>Open in Spotify</span>
+                        <ExternalLink className="h-4 w-4" />
                       </a>
                     </div>
+                  </div>
+                )}
+
+                {/* Albums Section */}
+                <div>
+                  <h3 className="text-xl font-bold mb-4">Albums</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((album) => (
+                      <a
+                        key={album}
+                        href="#"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group cursor-pointer"
+                      >
+                        <div className="aspect-square bg-gray-200 rounded-lg mb-2 overflow-hidden">
+                          <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 group-hover:scale-105 transition-transform" />
+                        </div>
+                        <p className="text-sm font-medium truncate">Album {album}</p>
+                        <p className="text-xs text-gray-500">2024-09-12</p>
+                        <p className="text-xs text-gray-500">18 tracks</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <p>No artist information available</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Venue Tab Content */}
+        <TabsContent value="venue">
+          <div className="space-y-6 max-w-4xl">
+            {event._embedded?.venues?.[0] ? (
+              <>
+                {/* Venue Name and Address */}
+                <div>
+                  <h2 className="text-2xl font-bold mb-3">{event._embedded.venues[0].name}</h2>
+                  {event._embedded.venues[0].address && (
+                    <div className="mb-4">
+                      {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
+                        <a
+                          href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                        >
+                          {[
+                            event._embedded.venues[0].address.line1,
+                            event._embedded.venues[0].city?.name,
+                            event._embedded.venues[0].state?.name || event._embedded.venues[0].state?.stateCode
+                          ].filter(Boolean).join(', ')}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <p className="text-gray-700">
+                          {[
+                            event._embedded.venues[0].address.line1,
+                            event._embedded.venues[0].city?.name,
+                            event._embedded.venues[0].state?.name || event._embedded.venues[0].state?.stateCode
+                          ].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* See Events Button */}
+                  {event._embedded.venues[0].url && (
+                    <a 
+                      href={event._embedded.venues[0].url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium border border-input hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <span>See Events</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
                   )}
                 </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">No venue information available</p>
-              )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+
+                {/* Venue Image */}
+                {event._embedded.venues[0].images?.[0] && (
+                  <div className="rounded-lg overflow-hidden border">
+                    <img
+                      src={event._embedded.venues[0].images[0].url}
+                      alt={event._embedded.venues[0].name}
+                      className="w-full max-w-md"
+                    />
+                  </div>
+                )}
+
+                {/* Parking Info */}
+                {event._embedded.venues[0].parkingDetail && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Parking</h3>
+                    <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                      {event._embedded.venues[0].parkingDetail}
+                    </p>
+                  </div>
+                )}
+
+                {/* General Rule */}
+                {event._embedded.venues[0].generalInfo?.generalRule && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">General Rule</h3>
+                    <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                      {event._embedded.venues[0].generalInfo.generalRule}
+                    </p>
+                  </div>
+                )}
+
+                {/* Child Rule */}
+                {event._embedded.venues[0].generalInfo?.childRule && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Child Rule</h3>
+                    <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                      {event._embedded.venues[0].generalInfo.childRule}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <p>No venue information available</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

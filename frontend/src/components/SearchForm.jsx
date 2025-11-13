@@ -79,19 +79,6 @@ function SearchForm({ onSearch, onClear }) {
     }
   }
 
-  const handleAutoDetectChange = async (e) => {
-    const checked = e.target.checked
-    setFormData(prev => ({
-      ...prev,
-      autoDetect: checked,
-      location: checked ? '' : prev.location
-    }))
-    
-    if (errors.location) {
-      setErrors(prev => ({ ...prev, location: '' }))
-    }
-  }
-
   const selectSuggestion = (suggestion) => {
     setFormData(prev => ({ ...prev, keyword: suggestion.name }))
     setShowSuggestions(false)
@@ -173,10 +160,10 @@ function SearchForm({ onSearch, onClear }) {
   return (
     <div className="w-full">
       <form onSubmit={handleSubmit}>
-        {/* Single Row Layout - More Compact */}
-        <div className="flex items-center gap-3">
+        {/* 响应式布局: 移动端垂直, 桌面端水平 */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
           {/* Keywords */}
-          <div className="flex-1 min-w-[200px] relative" ref={suggestionsRef}>
+          <div className="flex-1 min-w-0 md:min-w-[200px] relative" ref={suggestionsRef}>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Keywords <span className="text-red-500">*</span>
             </label>
@@ -201,6 +188,7 @@ function SearchForm({ onSearch, onClear }) {
               </div>
             </div>
             
+            {/* Autocomplete下拉列表 */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
                 {suggestions.map((suggestion, index) => (
@@ -214,10 +202,11 @@ function SearchForm({ onSearch, onClear }) {
                 ))}
               </div>
             )}
+            {errors.keyword && <p className="text-xs text-red-500 mt-1">{errors.keyword}</p>}
           </div>
 
           {/* Category */}
-          <div className="w-32">
+          <div className="w-full md:w-32">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Category <span className="text-red-500">*</span>
             </label>
@@ -236,7 +225,7 @@ function SearchForm({ onSearch, onClear }) {
           </div>
 
           {/* Location */}
-          <div className="flex-1 min-w-[180px]">
+          <div className="flex-1 min-w-0 md:min-w-[180px]">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Location <span className="text-red-500">*</span>
             </label>
@@ -248,10 +237,11 @@ function SearchForm({ onSearch, onClear }) {
               placeholder="Enter location..."
               className={`h-9 text-sm ${errors.location ? 'border-red-500' : ''}`}
             />
+            {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
           </div>
 
-          {/* Auto-detect - Using Switch */}
-          <div className="flex items-center gap-2 pb-[2px]">
+          {/* Auto-detect Location */}
+          <div className="flex items-center gap-2 md:pb-[2px]">
             <Switch
               checked={formData.autoDetect}
               onCheckedChange={(checked) => {
@@ -271,7 +261,7 @@ function SearchForm({ onSearch, onClear }) {
           </div>
 
           {/* Distance */}
-          <div className="w-28">
+          <div className="w-full md:w-28">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Distance <span className="text-red-500">*</span>
             </label>
@@ -288,28 +278,20 @@ function SearchForm({ onSearch, onClear }) {
                 miles
               </span>
             </div>
+            {errors.distance && <p className="text-xs text-red-500 mt-1">{errors.distance}</p>}
           </div>
 
           {/* Search Button */}
-          <div className="flex items-end pb-[2px]">
+          <div className="flex items-end md:pb-[2px]">
             <Button 
               type="submit" 
-              className="h-9 bg-black hover:bg-gray-800 text-white text-sm px-4"
+              className="w-full md:w-auto h-9 bg-black hover:bg-gray-800 text-white text-sm px-4"
             >
               <Search className="h-3.5 w-3.5 mr-1.5" />
               Search Events
             </Button>
           </div>
         </div>
-
-        {/* Error Messages Row */}
-        {(errors.keyword || errors.location || errors.distance) && (
-          <div className="flex gap-3 mt-1">
-            {errors.keyword && <p className="flex-1 text-xs text-red-500">{errors.keyword}</p>}
-            {errors.location && <p className="flex-1 text-xs text-red-500">{errors.location}</p>}
-            {errors.distance && <p className="text-xs text-red-500">{errors.distance}</p>}
-          </div>
-        )}
       </form>
     </div>
   )

@@ -4,7 +4,8 @@ import { cn } from "../../utils/cn"
 const Button = React.forwardRef(({ 
   className, 
   variant = "default", 
-  size = "default", 
+  size = "default",
+  asChild,  // Extract asChild to prevent it from being passed to DOM
   ...props 
 }, ref) => {
   const baseStyles = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
@@ -25,6 +26,10 @@ const Button = React.forwardRef(({
     icon: "h-10 w-10",
   }
 
+  // If asChild is true, we would render children directly
+  // For now, we just ignore it and always render a button
+  // This prevents the asChild prop from being passed to the DOM element
+  
   return (
     <button
       className={cn(
