@@ -30,10 +30,9 @@ export default function EventDetail() {
       const data = await response.json();
       setEvent(data);
       
-      // Check if event is in favorites
-      const favoritesResponse = await fetch('/api/favorites');
-      const favorites = await favoritesResponse.json();
-      setIsFavorite(favorites.some(fav => fav.id === id));
+      // Check if event is in favorites using the utility function
+      const favoriteStatus = await checkIsFavorite(id);
+      setIsFavorite(favoriteStatus);
 
       // If music event, fetch Spotify data
       if (data.classifications?.[0]?.segment?.name?.toLowerCase() === 'music') {
@@ -82,15 +81,15 @@ export default function EventDetail() {
   const handleFavoriteToggle = async () => {
     try {
       if (isFavorite) {
-        await fetch(`/api/favorites/${id}`, { method: 'DELETE' });
-        setIsFavorite(false);
+        const result = await removeFromFavorites(event);
+        if (result.success) {
+          setIsFavorite(false);
+        }
       } else {
-        await fetch('/api/favorites', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(event)
-        });
-        setIsFavorite(true);
+        const result = await addToFavorites(event);
+        if (result.success) {
+          setIsFavorite(true);
+        }
       }
     } catch (err) {
       console.error('Failed to toggle favorite:', err);
@@ -400,25 +399,44 @@ export default function EventDetail() {
                         <img
                           src={artistData.images[0].url}
                           alt={artistData.name}
-                          className="w-32 h-32 rounded-lg object-cover flex-shrink-0"
+                          className="w-32 h-32 sm:w-40 sm:h-40 rounded-lg object-cover flex-shrink-0"
                         />
                       )}
                       
                       {/* Artist Details */}
-                      <div className="flex-1">
-                        <h2 className="text-2xl font-bold mb-3">{artistData.name}</h2>
-                        <div className="space-y-2 mb-4">
-                          <p className="text-sm text-gray-600">
-                            <span className="font-semibold">Followers:</span> {formatNumber(artistData.followers?.total)}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-semibold">Popularity:</span> {artistData.popularity}%
-                          </p>
-                          {artistData.genres && artistData.genres.length > 0 && (
+                      <div className="flex-1 w-full">
+                        <h2 className="text-2xl font-bold mb-4">{artistData.name}</h2>
+                        
+                        {/* Stats Layout - Mobile: vertical, Desktop: horizontal with genres */}
+                        <div className="space-y-3 sm:space-y-2 mb-4">
+                          {/* Mobile: Stacked layout */}
+                          <div className="sm:hidden space-y-3">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-sm text-gray-600 mb-1">Followers:</p>
+                                <p className="text-base font-medium">{formatNumber(artistData.followers?.total)}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-600 mb-1">Popularity:</p>
+                                <p className="text-base font-medium">{artistData.popularity}%</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Desktop: Inline layout with genres */}
+                          <div className="hidden sm:block space-y-2">
                             <p className="text-sm text-gray-600">
-                              <span className="font-semibold">Genres:</span> {artistData.genres.join(', ')}
+                              <span className="font-semibold">Followers:</span> {formatNumber(artistData.followers?.total)}
                             </p>
-                          )}
+                            <p className="text-sm text-gray-600">
+                              <span className="font-semibold">Popularity:</span> {artistData.popularity}%
+                            </p>
+                            {artistData.genres && artistData.genres.length > 0 && (
+                              <p className="text-sm text-gray-600">
+                                <span className="font-semibold">Genres:</span> {artistData.genres.join(', ')}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         
                         {/* Open in Spotify Button */}
@@ -436,11 +454,11 @@ export default function EventDetail() {
                       </div>
                     </div>
 
-                    {/* Albums Section */}
+                    {/* Albums Section - Full Width */}
                     {albums.length > 0 && (
-                      <div>
+                      <div className="w-full">
                         <h3 className="text-xl font-bold mb-4">Albums</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
                           {albums.map((album) => (
                             <a
                               key={album.id}
