@@ -1,5 +1,8 @@
+// frontend/src/App.jsx
+
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
+import { Toaster } from 'sonner'
 import Home from './pages/home.jsx'
 import Favorites from './pages/Favorites'
 import EventDetail from './pages/EventDetail'
@@ -116,6 +119,26 @@ function App() {
             <Route path="/event/:id" element={<EventDetail />} />
           </Routes>
         </main>
+
+        {/* Sonner Toast Notifications */}
+        <Toaster 
+          position="top-right"
+          richColors
+          closeButton={false}
+          duration={5000}
+          expand={false}
+          visibleToasts={9}
+          toastOptions={{
+            style: {
+              background: 'white',
+              color: '#0f172a',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            },
+            className: 'sonner-toast',
+          }}
+        />
       </div>
     </Router>
   )

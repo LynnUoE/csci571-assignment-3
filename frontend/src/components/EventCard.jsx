@@ -1,87 +1,107 @@
-import { useNavigate } from 'react-router-dom'
-import { Card, CardContent } from './ui/card'
-import { Heart } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { apiService } from '../services/api'
+// frontend/src/components/EventCard.jsx
 
-function EventCard({ event }) {
-  const navigate = useNavigate()
-  const [isFavorite, setIsFavorite] = useState(false)
+import { useNavigate } from 'react-router-dom';
+import { Card } from './ui/card';
+import { Heart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { addToFavorites, removeFromFavorites, checkIsFavorite } from '../utils/favoritesUtils';
+
+function EventCard({ event, onFavoriteChange }) {
+  const navigate = useNavigate();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    checkFavoriteStatus()
-  }, [event.id])
+    loadFavoriteStatus();
 
-  const checkFavoriteStatus = async () => {
-    try {
-      const result = await apiService.isFavorite(event.id)
-      setIsFavorite(result.isFavorite)
-    } catch (error) {
-      console.error('Error checking favorite status:', error)
-    }
-  }
+    // Listen for favorites updates
+    const handleFavoritesUpdate = () => {
+      loadFavoriteStatus();
+    };
+
+    window.addEventListener('favorites-updated', handleFavoritesUpdate);
+    
+    return () => {
+      window.removeEventListener('favorites-updated', handleFavoritesUpdate);
+    };
+  }, [event.id]);
+
+  const loadFavoriteStatus = async () => {
+    const status = await checkIsFavorite(event.id);
+    setIsFavorite(status);
+  };
 
   const handleCardClick = (e) => {
     // Don't navigate if clicking the favorite button
     if (e.target.closest('.favorite-button')) {
-      return
+      return;
     }
-    navigate(`/event/${event.id}`)
-  }
+    navigate(`/event/${event.id}`);
+  };
 
   const handleFavoriteClick = async (e) => {
-    e.stopPropagation()
+    e.stopPropagation();
+    
+    if (isLoading) return;
+    
+    setIsLoading(true);
     
     try {
       if (isFavorite) {
-        await apiService.removeFavorite(event.id)
-        alert('Removed from Favorites!')
-        setIsFavorite(false)
+        const result = await removeFromFavorites(event);
+        if (result.success) {
+          setIsFavorite(false);
+          if (onFavoriteChange) {
+            onFavoriteChange();
+          }
+        }
       } else {
-        await apiService.addFavorite(event)
-        alert('Event Added to Favorites!')
-        setIsFavorite(true)
+        const result = await addToFavorites(event);
+        if (result.success) {
+          setIsFavorite(true);
+          if (onFavoriteChange) {
+            onFavoriteChange();
+          }
+        }
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error)
-      alert('Error updating favorites. Please try again.')
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    })
-  }
+    });
+  };
 
   const formatTime = (dateString, timeString) => {
-    if (!dateString) return ''
-    if (!timeString) return ''
-    const date = new Date(`${dateString}T${timeString}`)
+    if (!dateString || !timeString) return '';
+    const date = new Date(`${dateString}T${timeString}`);
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
-    })
-  }
+    });
+  };
 
   const getImageUrl = () => {
     if (event.images && event.images.length > 0) {
-      return event.images[0].url
+      return event.images[0].url;
     }
-    return '/placeholder-event.jpg'
-  }
+    return 'https://via.placeholder.com/400x300?text=No+Image';
+  };
 
   const getVenueName = () => {
-    return event._embedded?.venues?.[0]?.name || 'N/A'
-  }
+    return event._embedded?.venues?.[0]?.name || 'N/A';
+  };
 
   const getGenre = () => {
-    return event.classifications?.[0]?.segment?.name || 'N/A'
-  }
+    return event.classifications?.[0]?.segment?.name || 'Event';
+  };
 
   return (
     <Card 
@@ -94,56 +114,57 @@ function EventCard({ event }) {
           alt={event.name}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/400x300?text=No+Image'
+            e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
           }}
         />
+        
+        {/* Category Badge */}
+        <div className="absolute top-3 left-3">
+          <span className="px-3 py-1 bg-white text-gray-900 text-xs font-semibold rounded-full">
+            {getGenre()}
+          </span>
+        </div>
+        
+        {/* Date Badge */}
+        {event.dates?.start?.localDate && (
+          <div className="absolute top-3 right-3">
+            <span className="px-3 py-1 bg-gray-900 text-white text-xs font-semibold rounded">
+              {formatDate(event.dates.start.localDate)}
+              {event.dates.start.localTime && (
+                <>, {formatTime(event.dates.start.localDate, event.dates.start.localTime)}</>
+              )}
+            </span>
+          </div>
+        )}
+        
+        {/* Favorite Button */}
         <button
-          className="favorite-button absolute top-3 right-3 p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-transform"
+          className="favorite-button absolute bottom-3 right-3 p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-50"
           onClick={handleFavoriteClick}
+          disabled={isLoading}
         >
           <Heart
-            className={`h-5 w-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
+            className={`h-5 w-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-700'}`}
           />
         </button>
       </div>
-      
-      <CardContent className="p-4">
-        <h3 className="font-bold text-lg mb-3 line-clamp-2 min-h-[3.5rem]">
+
+      {/* Event Info */}
+      <div className="p-4">
+        <h3 className="font-semibold text-lg mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">
           {event.name}
         </h3>
-        
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500 font-medium">Date:</span>
-            <span className="text-gray-900 font-semibold">
-              {formatDate(event.dates?.start?.localDate)}
-            </span>
-          </div>
-          
-          {event.dates?.start?.localTime && (
-            <div className="flex justify-between">
-              <span className="text-gray-500 font-medium">Time:</span>
-              <span className="text-gray-900 font-semibold">
-                {formatTime(event.dates.start.localDate, event.dates.start.localTime)}
-              </span>
-            </div>
-          )}
-          
-          <div className="flex justify-between">
-            <span className="text-gray-500 font-medium">Genre:</span>
-            <span className="text-gray-900 font-semibold">{getGenre()}</span>
-          </div>
-          
-          <div className="flex justify-between">
-            <span className="text-gray-500 font-medium">Venue:</span>
-            <span className="text-gray-900 font-semibold truncate ml-2">
-              {getVenueName()}
-            </span>
-          </div>
-        </div>
-      </CardContent>
+        <p className="text-sm text-gray-600 mb-1">
+          {getVenueName()}
+        </p>
+        {event.dates?.start?.localDate && event.dates.start.localTime && (
+          <p className="text-xs text-gray-500">
+            {formatDate(event.dates.start.localDate)} • {formatTime(event.dates.start.localDate, event.dates.start.localTime)}
+          </p>
+        )}
+      </div>
     </Card>
-  )
+  );
 }
 
-export default EventCard
+export default EventCard;

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { addToFavorites, removeFromFavorites, checkIsFavorite } from '../utils/favoritesUtils';
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -11,29 +12,72 @@ export default function EventDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  
+  // Spotify data
+  const [artistData, setArtistData] = useState(null);
+  const [albums, setAlbums] = useState([]);
+  const [loadingSpotify, setLoadingSpotify] = useState(false);
 
   useEffect(() => {
-    const fetchEventDetails = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/events/${id}`);
-        if (!response.ok) throw new Error('Failed to fetch event details');
-        const data = await response.json();
-        setEvent(data);
-        
-        // Check if event is in favorites
-        const favoritesResponse = await fetch('/api/favorites');
-        const favorites = await favoritesResponse.json();
-        setIsFavorite(favorites.some(fav => fav.id === id));
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchEventDetails();
   }, [id]);
+
+  const fetchEventDetails = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/events/${id}`);
+      if (!response.ok) throw new Error('Failed to fetch event details');
+      const data = await response.json();
+      setEvent(data);
+      
+      // Check if event is in favorites
+      const favoritesResponse = await fetch('/api/favorites');
+      const favorites = await favoritesResponse.json();
+      setIsFavorite(favorites.some(fav => fav.id === id));
+
+      // If music event, fetch Spotify data
+      if (data.classifications?.[0]?.segment?.name?.toLowerCase() === 'music') {
+        fetchSpotifyData(data);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSpotifyData = async (eventData) => {
+    try {
+      setLoadingSpotify(true);
+      
+      // Get first artist name
+      const artistName = eventData._embedded?.attractions?.[0]?.name;
+      if (!artistName) return;
+
+      // Search for artist on Spotify
+      const artistResponse = await fetch(`/api/artists/search?keyword=${encodeURIComponent(artistName)}`);
+      if (!artistResponse.ok) {
+        console.error('Failed to fetch artist from Spotify');
+        return;
+      }
+      
+      const artist = await artistResponse.json();
+      setArtistData(artist);
+
+      // Fetch albums
+      if (artist.id) {
+        const albumsResponse = await fetch(`/api/artists/${artist.id}/albums`);
+        if (albumsResponse.ok) {
+          const albumsData = await albumsResponse.json();
+          setAlbums(albumsData.items || []);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching Spotify data:', err);
+    } finally {
+      setLoadingSpotify(false);
+    }
+  };
 
   const handleFavoriteToggle = async () => {
     try {
@@ -53,7 +97,7 @@ export default function EventDetail() {
     }
   };
 
-  // Helper functions for formatting
+  // Helper functions
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { 
@@ -80,6 +124,21 @@ export default function EventDetail() {
     return 'bg-gray-500';
   };
 
+  const formatTicketStatus = (status) => {
+    if (!status) return '';
+    const statusLower = status.toLowerCase();
+    
+    // Format ticket status text
+    if (statusLower === 'onsale') return 'On Sale';
+    if (statusLower === 'offsale') return 'Off Sale';
+    if (statusLower === 'canceled' || statusLower === 'cancelled') return 'Canceled';
+    if (statusLower === 'postponed') return 'Postponed';
+    if (statusLower === 'rescheduled') return 'Rescheduled';
+    
+    // Capitalize first letter for any other status
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
   const getSeatmapUrl = () => {
     return event?.seatmap?.staticUrl || null;
   };
@@ -94,6 +153,18 @@ export default function EventDetail() {
       const text = `Check ${eventName} on Ticketmaster.`;
       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(eventUrl)}`, '_blank');
     }
+  };
+
+  // Format numbers with commas
+  const formatNumber = (num) => {
+    return num?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") || '0';
+  };
+
+  // Format album release date
+  const formatAlbumDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
   if (loading) {
@@ -203,20 +274,32 @@ export default function EventDetail() {
               )}
 
               {/* Genres */}
-              {event.classifications?.[0] && (
-                <div>
-                  <h3 className="text-gray-600 text-sm mb-1">Genres</h3>
-                  <p className="text-gray-900 font-normal">
-                    {[
-                      event.classifications[0].segment?.name,
-                      event.classifications[0].genre?.name,
-                      event.classifications[0].subGenre?.name,
-                      event.classifications[0].type?.name,
-                      event.classifications[0].subType?.name
-                    ].filter(Boolean).join(', ')}
-                  </p>
-                </div>
-              )}
+              {event.classifications?.[0] && (() => {
+                const genres = [
+                  event.classifications[0].segment?.name,
+                  event.classifications[0].genre?.name,
+                  event.classifications[0].subGenre?.name,
+                  event.classifications[0].type?.name,
+                  event.classifications[0].subType?.name
+                ].filter(item => {
+                  // Filter out empty, null, undefined, and "Undefined" string
+                  return item && 
+                         item.trim() !== '' && 
+                         item.toLowerCase() !== 'undefined';
+                });
+                
+                // Remove duplicates
+                const uniqueGenres = [...new Set(genres)];
+                
+                return uniqueGenres.length > 0 ? (
+                  <div>
+                    <h3 className="text-gray-600 text-sm mb-1">Genres</h3>
+                    <p className="text-gray-900 font-normal">
+                      {uniqueGenres.join(' | ')}
+                    </p>
+                  </div>
+                ) : null;
+              })()}
 
               {/* Price Ranges */}
               {event.priceRanges?.[0] && (
@@ -233,7 +316,7 @@ export default function EventDetail() {
                 <div>
                   <h3 className="text-gray-600 text-sm mb-1">Ticket Status</h3>
                   <span className={`inline-block px-3 py-1 rounded text-white text-sm ${getTicketStatusColor(event.dates.status.code)}`}>
-                    {event.dates.status.code}
+                    {formatTicketStatus(event.dates.status.code)}
                   </span>
                 </div>
               )}
@@ -304,71 +387,93 @@ export default function EventDetail() {
           <div className="space-y-8">
             {isMusicEvent && event._embedded?.attractions && event._embedded.attractions.length > 0 ? (
               <>
-                {/* Artist Info Card */}
-                {event._embedded.attractions[0] && (
-                  <div className="flex flex-col sm:flex-row gap-6 items-start">
-                    {/* Artist Image */}
-                    {event._embedded.attractions[0].images?.[0] && (
-                      <img
-                        src={event._embedded.attractions[0].images[0].url}
-                        alt={event._embedded.attractions[0].name}
-                        className="w-32 h-32 rounded-lg object-cover flex-shrink-0"
-                      />
-                    )}
-                    
-                    {/* Artist Details */}
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-bold mb-3">{event._embedded.attractions[0].name}</h2>
-                      <div className="space-y-2 mb-4">
-                        <p className="text-sm text-gray-600">
-                          <span className="font-semibold">Followers:</span> 122,371,766
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-semibold">Popularity:</span> 89%
-                        </p>
-                        {event.classifications?.[0]?.genre && (
+                {loadingSpotify ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <p>Loading artist information...</p>
+                  </div>
+                ) : artistData ? (
+                  <>
+                    {/* Artist Info Card */}
+                    <div className="flex flex-col sm:flex-row gap-6 items-start">
+                      {/* Artist Image */}
+                      {artistData.images?.[0] && (
+                        <img
+                          src={artistData.images[0].url}
+                          alt={artistData.name}
+                          className="w-32 h-32 rounded-lg object-cover flex-shrink-0"
+                        />
+                      )}
+                      
+                      {/* Artist Details */}
+                      <div className="flex-1">
+                        <h2 className="text-2xl font-bold mb-3">{artistData.name}</h2>
+                        <div className="space-y-2 mb-4">
                           <p className="text-sm text-gray-600">
-                            <span className="font-semibold">Genres:</span> {event.classifications[0].genre.name}
+                            <span className="font-semibold">Followers:</span> {formatNumber(artistData.followers?.total)}
                           </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-semibold">Popularity:</span> {artistData.popularity}%
+                          </p>
+                          {artistData.genres && artistData.genres.length > 0 && (
+                            <p className="text-sm text-gray-600">
+                              <span className="font-semibold">Genres:</span> {artistData.genres.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Open in Spotify Button */}
+                        {artistData.external_urls?.spotify && (
+                          <a 
+                            href={artistData.external_urls.spotify}
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white h-10 px-4 rounded-md text-sm font-medium transition-colors"
+                          >
+                            <span>Open in Spotify</span>
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
                         )}
                       </div>
-                      
-                      {/* Open in Spotify Button */}
-                      <a 
-                        href="#" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white h-10 px-4 rounded-md text-sm font-medium transition-colors"
-                      >
-                        <span>Open in Spotify</span>
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
                     </div>
+
+                    {/* Albums Section */}
+                    {albums.length > 0 && (
+                      <div>
+                        <h3 className="text-xl font-bold mb-4">Albums</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {albums.map((album) => (
+                            <a
+                              key={album.id}
+                              href={album.external_urls?.spotify}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group cursor-pointer"
+                            >
+                              <div className="aspect-square bg-gray-200 rounded-lg mb-2 overflow-hidden">
+                                {album.images?.[0] ? (
+                                  <img 
+                                    src={album.images[0].url} 
+                                    alt={album.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400" />
+                                )}
+                              </div>
+                              <p className="text-sm font-medium truncate">{album.name}</p>
+                              <p className="text-xs text-gray-500">{formatAlbumDate(album.release_date)}</p>
+                              <p className="text-xs text-gray-500">{album.total_tracks} tracks</p>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <p>No artist information available from Spotify</p>
                   </div>
                 )}
-
-                {/* Albums Section */}
-                <div>
-                  <h3 className="text-xl font-bold mb-4">Albums</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((album) => (
-                      <a
-                        key={album}
-                        href="#"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group cursor-pointer"
-                      >
-                        <div className="aspect-square bg-gray-200 rounded-lg mb-2 overflow-hidden">
-                          <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 group-hover:scale-105 transition-transform" />
-                        </div>
-                        <p className="text-sm font-medium truncate">Album {album}</p>
-                        <p className="text-xs text-gray-500">2024-09-12</p>
-                        <p className="text-xs text-gray-500">18 tracks</p>
-                      </a>
-                    ))}
-                  </div>
-                </div>
               </>
             ) : (
               <div className="text-center py-12 text-gray-500">
@@ -380,30 +485,32 @@ export default function EventDetail() {
 
         {/* Venue Tab Content */}
         <TabsContent value="venue" className="mt-6">
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-6">
             {event._embedded?.venues?.[0] ? (
               <>
-                {/* Venue Name and Header */}
+                {/* Venue Header: Name and See Events Button */}
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-2xl font-bold mb-3">{event._embedded.venues[0].name}</h2>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold mb-2">{event._embedded.venues[0].name}</h2>
+                    {/* Address */}
                     {event._embedded.venues[0].address && (
-                      <div className="mb-4">
+                      <div>
                         {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
                           <a
                             href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm"
+                            className="text-blue-600 hover:underline text-base inline-flex items-center gap-1"
                           >
                             {[
                               event._embedded.venues[0].address.line1,
                               event._embedded.venues[0].city?.name,
                               event._embedded.venues[0].state?.stateCode
                             ].filter(Boolean).join(', ')}
+                            <ExternalLink className="h-3 w-3" />
                           </a>
                         ) : (
-                          <p className="text-sm text-gray-600">
+                          <p className="text-base text-gray-700">
                             {[
                               event._embedded.venues[0].address.line1,
                               event._embedded.venues[0].city?.name,
@@ -420,7 +527,7 @@ export default function EventDetail() {
                     <Button
                       onClick={() => window.open(event._embedded.venues[0].url, '_blank')}
                       variant="outline"
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 ml-4"
                     >
                       See Events
                       <ExternalLink className="h-4 w-4" />
@@ -428,46 +535,54 @@ export default function EventDetail() {
                   )}
                 </div>
 
-                {/* Venue Image */}
-                {event._embedded.venues[0].images?.[0] && (
-                  <div className="rounded-lg overflow-hidden">
-                    <img
-                      src={event._embedded.venues[0].images[0].url}
-                      alt={event._embedded.venues[0].name}
-                      className="w-full h-64 object-cover"
-                    />
-                  </div>
-                )}
-
-                {/* Parking Info */}
-                {event._embedded.venues[0].parkingDetail && (
+                {/* Two Column Layout: Image on left, Info on right */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Left Column - Venue Image */}
                   <div>
-                    <h3 className="font-semibold mb-2">Parking</h3>
-                    <p className="text-sm text-gray-700 whitespace-pre-line">
-                      {event._embedded.venues[0].parkingDetail}
-                    </p>
+                    {event._embedded.venues[0].images?.[0] && (
+                      <div className="rounded-lg overflow-hidden border bg-white p-4">
+                        <img
+                          src={event._embedded.venues[0].images[0].url}
+                          alt={event._embedded.venues[0].name}
+                          className="w-full h-auto"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* General Rule */}
-                {event._embedded.venues[0].generalInfo?.generalRule && (
-                  <div>
-                    <h3 className="font-semibold mb-2">General Rule</h3>
-                    <p className="text-sm text-gray-700 whitespace-pre-line">
-                      {event._embedded.venues[0].generalInfo.generalRule}
-                    </p>
-                  </div>
-                )}
+                  {/* Right Column - Venue Information */}
+                  <div className="space-y-6">
+                    {/* Parking Info */}
+                    {event._embedded.venues[0].parkingDetail && (
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-2">Parking</h3>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {event._embedded.venues[0].parkingDetail}
+                        </p>
+                      </div>
+                    )}
 
-                {/* Child Rule */}
-                {event._embedded.venues[0].generalInfo?.childRule && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Child Rule</h3>
-                    <p className="text-sm text-gray-700 whitespace-pre-line">
-                      {event._embedded.venues[0].generalInfo.childRule}
-                    </p>
+                    {/* General Rule */}
+                    {event._embedded.venues[0].generalInfo?.generalRule && (
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-2">General Rule</h3>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {event._embedded.venues[0].generalInfo.generalRule}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Child Rule */}
+                    {event._embedded.venues[0].generalInfo?.childRule && (
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-2">Child Rule</h3>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {event._embedded.venues[0].generalInfo.childRule}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </>
             ) : (
               <div className="text-center py-12 text-gray-500">
