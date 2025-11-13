@@ -392,68 +392,73 @@ export default function EventDetail() {
                   </div>
                 ) : artistData ? (
                   <>
-                    {/* Artist Info Card */}
-                    <div className="flex flex-col sm:flex-row gap-6 items-start">
-                      {/* Artist Image */}
-                      {artistData.images?.[0] && (
-                        <img
-                          src={artistData.images[0].url}
-                          alt={artistData.name}
-                          className="w-32 h-32 sm:w-40 sm:h-40 rounded-lg object-cover flex-shrink-0"
-                        />
-                      )}
-                      
-                      {/* Artist Details */}
-                      <div className="flex-1 w-full">
-                        <h2 className="text-2xl font-bold mb-4">{artistData.name}</h2>
+                      {/* Artist Info Card */}
+                      <div className="flex flex-row gap-4 items-start">
+                        {/* Artist Image - Always on the left */}
+                        {artistData.images?.[0] && (
+                          <img
+                            src={artistData.images[0].url}
+                            alt={artistData.name}
+                            className="w-24 h-24 sm:w-40 sm:h-40 rounded-lg object-cover flex-shrink-0"
+                          />
+                        )}
                         
-                        {/* Stats Layout - Mobile: vertical, Desktop: horizontal with genres */}
-                        <div className="space-y-3 sm:space-y-2 mb-4">
-                          {/* Mobile: Stacked layout */}
-                          <div className="sm:hidden space-y-3">
-                            <div className="grid grid-cols-2 gap-4">
+                        {/* Artist Details - Always on the right */}
+                        <div className="flex-1 min-w-0">
+                          <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-4">{artistData.name}</h2>
+                          
+                          {/* Stats Layout */}
+                          <div className="space-y-2 mb-3 sm:mb-4">
+                            {/* Mobile: Vertical stacked layout */}
+                            <div className="sm:hidden space-y-2">
                               <div>
-                                <p className="text-sm text-gray-600 mb-1">Followers:</p>
-                                <p className="text-base font-medium">{formatNumber(artistData.followers?.total)}</p>
+                                <p className="text-xs text-gray-600">Followers:</p>
+                                <p className="text-sm font-medium">{formatNumber(artistData.followers?.total)}</p>
                               </div>
                               <div>
-                                <p className="text-sm text-gray-600 mb-1">Popularity:</p>
-                                <p className="text-base font-medium">{artistData.popularity}%</p>
+                                <p className="text-xs text-gray-600">Popularity:</p>
+                                <p className="text-sm font-medium">{artistData.popularity}%</p>
                               </div>
+                              {artistData.genres && artistData.genres.length > 0 && (
+                                <div>
+                                  <p className="text-xs text-gray-600">Genres:</p>
+                                  <p className="text-sm">{artistData.genres.join(', ')}</p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Desktop: Followers & Popularity on same line, Genres on second line */}
+                            <div className="hidden sm:block space-y-2">
+                              <div className="flex gap-6">
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-semibold">Followers:</span> {formatNumber(artistData.followers?.total)}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-semibold">Popularity:</span> {artistData.popularity}%
+                                </p>
+                              </div>
+                              {artistData.genres && artistData.genres.length > 0 && (
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-semibold">Genres:</span> {artistData.genres.join(', ')}
+                                </p>
+                              )}
                             </div>
                           </div>
                           
-                          {/* Desktop: Inline layout with genres */}
-                          <div className="hidden sm:block space-y-2">
-                            <p className="text-sm text-gray-600">
-                              <span className="font-semibold">Followers:</span> {formatNumber(artistData.followers?.total)}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              <span className="font-semibold">Popularity:</span> {artistData.popularity}%
-                            </p>
-                            {artistData.genres && artistData.genres.length > 0 && (
-                              <p className="text-sm text-gray-600">
-                                <span className="font-semibold">Genres:</span> {artistData.genres.join(', ')}
-                              </p>
-                            )}
-                          </div>
+                          {/* Open in Spotify Button */}
+                          {artistData.external_urls?.spotify && (
+                            <a 
+                              href={artistData.external_urls.spotify}
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white h-9 sm:h-10 px-3 sm:px-4 rounded-md text-xs sm:text-sm font-medium transition-colors"
+                            >
+                              <span>Open in Spotify</span>
+                              <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </a>
+                          )}
                         </div>
-                        
-                        {/* Open in Spotify Button */}
-                        {artistData.external_urls?.spotify && (
-                          <a 
-                            href={artistData.external_urls.spotify}
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white h-10 px-4 rounded-md text-sm font-medium transition-colors"
-                          >
-                            <span>Open in Spotify</span>
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        )}
                       </div>
-                    </div>
-
                     {/* Albums Section - Full Width */}
                     {albums.length > 0 && (
                       <div className="w-full">

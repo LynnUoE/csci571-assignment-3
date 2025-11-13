@@ -1,0 +1,36 @@
+runtime: nodejs20
+
+instance_class: F1
+
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 0
+  max_instances: 10
+
+env_variables:
+  PORT: "8080"
+  NODE_ENV: "production"
+  TICKETMASTER_API_KEY: "jojFIRo2FHGGqS1uAjnQIfKPuCzdGYz1"
+  SPOTIFY_CLIENT_ID: "b3b32ed130f34a8fa37ccad54c74f86a"
+  SPOTIFY_CLIENT_SECRET: "33cad56321284f7fabfdeb9eacb3cfee"
+  MONGODB_URI: "mongodb+srv://linxuanc_db_user:csci571webtechnologies@csci571.pza8miz.mongodb.net/eventsDB?retryWrites=true&w=majority&appName=CSCI571"
+  VITE_GOOGLE_MAPS_API_KEY: "AIzaSyBLI3A7HJUJ4jTPEPuESWCppDVdyYYMSGY"
+  VITE_IPINFO_API_KEY: "bf8f570fb8f455"
+
+handlers:
+  - url: /assets
+    static_dir: dist/assets
+    secure: always
+    
+  - url: /.*\.(ico|png|jpg|jpeg|gif|svg|webp)$
+    static_files: dist/\1
+    upload: dist/.*\.(ico|png|jpg|jpeg|gif|svg|webp)$
+    secure: always
+    
+  - url: /api/.*
+    script: auto
+    secure: always
+    
+  - url: /.*
+    script: auto
+    secure: always
