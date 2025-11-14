@@ -294,7 +294,7 @@ export default function EventDetail() {
                   <div>
                     <h3 className="text-gray-600 text-sm mb-1">Genres</h3>
                     <p className="text-gray-900 font-normal">
-                      {uniqueGenres.join(' | ')}
+                      {uniqueGenres.join(' , ')}
                     </p>
                   </div>
                 ) : null;
@@ -508,49 +508,49 @@ export default function EventDetail() {
 
         {/* Venue Tab Content */}
         <TabsContent value="venue" className="mt-6">
-          <div className="space-y-6">
-            {event._embedded?.venues?.[0] ? (
+          <div>
+            {event._embedded?.venues && event._embedded.venues[0] ? (
               <>
-                {/* Venue Header: Name and See Events Button */}
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold mb-2">{event._embedded.venues[0].name}</h2>
-                    {/* Address */}
-                    {event._embedded.venues[0].address && (
-                      <div>
-                        {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
-                          <a
-                            href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-base inline-flex items-center gap-1"
-                          >
-                            {[
-                              event._embedded.venues[0].address.line1,
-                              event._embedded.venues[0].city?.name,
-                              event._embedded.venues[0].state?.stateCode
-                            ].filter(Boolean).join(', ')}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <p className="text-base text-gray-700">
-                            {[
-                              event._embedded.venues[0].address.line1,
-                              event._embedded.venues[0].city?.name,
-                              event._embedded.venues[0].state?.stateCode
-                            ].filter(Boolean).join(', ')}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                {/* Venue Header */}
+                <div className="mb-6">
+                  {/* Venue Name */}
+                  <h2 className="text-2xl font-bold mb-2">{event._embedded.venues[0].name}</h2>
                   
-                  {/* See Events Button */}
+                  {/* Address */}
+                  {event._embedded.venues[0].address && (
+                    <div className="mb-4">
+                      {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
+                        <a
+                          href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-base inline-flex items-center gap-1"
+                        >
+                          {[
+                            event._embedded.venues[0].address.line1,
+                            event._embedded.venues[0].city?.name,
+                            event._embedded.venues[0].state?.stateCode
+                          ].filter(Boolean).join(', ')}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <p className="text-base text-gray-700">
+                          {[
+                            event._embedded.venues[0].address.line1,
+                            event._embedded.venues[0].city?.name,
+                            event._embedded.venues[0].state?.stateCode
+                          ].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* See Events Button - Full width on mobile, auto on desktop */}
                   {event._embedded.venues[0].url && (
                     <Button
                       onClick={() => window.open(event._embedded.venues[0].url, '_blank')}
                       variant="outline"
-                      className="flex items-center gap-2 ml-4"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2"
                     >
                       See Events
                       <ExternalLink className="h-4 w-4" />

@@ -59,8 +59,8 @@ function Home() {
       {!loading && searched && events.length === 0 && !error && (
         <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-gray-400">
           <Search className="h-12 w-12 sm:h-16 sm:w-16 mb-4" />
-          <p className="text-base sm:text-lg font-medium">No events found</p>
-          <p className="text-sm mt-2">Try adjusting your search criteria</p>
+          <p className="text-base sm:text-lg font-medium">Nothing Found</p>
+          <p className="text-sm mt-2">Update the query to find events near you</p>
         </div>
       )}
 

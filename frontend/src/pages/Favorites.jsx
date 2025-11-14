@@ -112,19 +112,14 @@ export default function Favorites() {
       {/* Empty State */}
       {favorites.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Heart className="h-16 w-16 text-gray-300 mb-4" />
+          
           <h2 className="text-xl font-semibold text-gray-700 mb-2">
             No favorite events yet
           </h2>
           <p className="text-gray-500 mb-6">
             Add events to your favorites by clicking the heart icon on any event
           </p>
-          <button
-            onClick={() => navigate('/')}
-            className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
-          >
-            Browse Events
-          </button>
+
         </div>
       ) : (
         /* Favorites Grid */
