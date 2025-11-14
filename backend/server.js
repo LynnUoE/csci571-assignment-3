@@ -45,17 +45,52 @@ app.get('/api/health', (req, res) => {
 const frontendPath = path.join(__dirname, 'dist');
 console.log('📂 Serving frontend from:', frontendPath);
 
-app.use(express.static(frontendPath));
+// Serve static files with proper MIME types
+app.use(express.static(frontendPath, {
+  setHeaders: (res, filepath) => {
+    // Set correct MIME types for different file types
+    if (filepath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (filepath.endsWith('.mjs')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (filepath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    } else if (filepath.endsWith('.json')) {
+      res.setHeader('Content-Type', 'application/json');
+    } else if (filepath.endsWith('.svg')) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+    } else if (filepath.endsWith('.woff') || filepath.endsWith('.woff2')) {
+      res.setHeader('Content-Type', 'font/woff2');
+    }
+  }
+}));
 
-// Catch-all route - serve index.html for any non-API routes
+// Catch-all route - serve index.html for any non-API, non-static routes
 // This enables client-side routing (React Router, etc.)
-app.get('*', (req, res) => {
-  // Don't serve index.html for API routes
+app.get('*', (req, res, next) => {
+  // Skip if it's an API route
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
+    return next();
   }
   
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  // Skip if it's requesting a static file (has extension)
+  if (path.extname(req.path)) {
+    return next();
+  }
+  
+  // Serve index.html for all other routes (for client-side routing)
+  const indexPath = path.join(frontendPath, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error('❌ Error serving index.html:', err);
+      res.status(404).send('Frontend not found. Please ensure the dist folder is deployed.');
+    }
+  });
+});
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
 });
 
 // Error handling middleware
@@ -73,15 +108,17 @@ async function startServer() {
     await connectDB();
     
     // Start Express server
-    // Listen on 0.0.0.0 for GCP
+    // Listen on 0.0.0.0 for GCP, use PORT from environment
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-      console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 API endpoints available at: http://0.0.0.0:${PORT}/api`);
-      console.log(`📂 Serving frontend from: ${frontendPath}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🚀 Server running on http://0.0.0.0:' + PORT);
+      console.log('📝 Environment:', process.env.NODE_ENV || 'development');
+      console.log('🔗 API endpoints: http://0.0.0.0:' + PORT + '/api');
+      console.log('📂 Frontend path:', frontendPath);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
@@ -99,6 +136,15 @@ process.on('SIGTERM', async () => {
   const { closeDB } = require('./db/mongodb');
   await closeDB();
   process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 startServer();

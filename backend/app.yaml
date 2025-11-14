@@ -15,35 +15,62 @@ env_variables:
   SPOTIFY_CLIENT_ID: "b3b32ed130f34a8fa37ccad54c74f86a"
   SPOTIFY_CLIENT_SECRET: "33cad56321284f7fabfdeb9eacb3cfee"
 
-# Request handlers
+# Handlers - Explicitly define static file handling
 handlers:
-  # All requests go to the Node.js app
-  - url: /.*
+  # Serve JavaScript files with correct MIME type
+  - url: /assets/(.+\.js)
+    static_files: dist/assets/\1
+    upload: dist/assets/.*\.js$
+    secure: always
+    mime_type: application/javascript
+    expiration: "1d"
+
+  # Serve CSS files
+  - url: /assets/(.+\.css)
+    static_files: dist/assets/\1
+    upload: dist/assets/.*\.css$
+    secure: always
+    mime_type: text/css
+    expiration: "1d"
+
+  # Serve other assets (images, fonts, etc.)
+  - url: /assets/(.+)
+    static_files: dist/assets/\1
+    upload: dist/assets/.*
+    secure: always
+    expiration: "1d"
+
+  # Serve vite.svg and other root-level static files
+  - url: /(.*\.(svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf))
+    static_files: dist/\1
+    upload: dist/.*\.(svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf)$
+    secure: always
+    expiration: "1d"
+
+  # API routes go to the app
+  - url: /api/.*
     script: auto
     secure: always
 
-# Instance class (F1 is free tier)
+  # Serve index.html for root
+  - url: /
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always
+
+  # All other routes serve index.html (for client-side routing)
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always
+
+# Instance configuration
 instance_class: F1
 
-# Automatic scaling configuration
+# Automatic scaling
 automatic_scaling:
   min_instances: 0
   max_instances: 5
   min_idle_instances: 0
   max_idle_instances: 1
   target_cpu_utilization: 0.65
-
-# Health checks
-readiness_check:
-  path: "/api/health"
-  check_interval_sec: 5
-  timeout_sec: 4
-  failure_threshold: 2
-  success_threshold: 2
-
-liveness_check:
-  path: "/api/health"
-  check_interval_sec: 30
-  timeout_sec: 4
-  failure_threshold: 2
-  success_threshold: 2

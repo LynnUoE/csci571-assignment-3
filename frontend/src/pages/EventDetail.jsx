@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { addToFavorites, removeFromFavorites, checkIsFavorite } from '../utils/favoritesUtils';
+import { Facebook, Twitter } from 'lucide-react';
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -339,26 +340,46 @@ export default function EventDetail() {
               <div>
                 <h3 className="text-gray-600 text-sm mb-2">Share</h3>
                 <div className="flex gap-3">
+                  {/* Facebook Icon */}
                   <button
                     onClick={() => handleShare('facebook')}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    className="w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors shadow-sm"
                     aria-label="Share on Facebook"
                   >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    <svg 
+                      className="w-5 h-5 text-gray-700" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
                     </svg>
                   </button>
+                  
+                  {/* Twitter Icon */}
                   <button
                     onClick={() => handleShare('twitter')}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    className="w-10 h-10 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors shadow-sm"
                     aria-label="Share on Twitter"
                   >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                    <svg 
+                      className="w-5 h-5 text-gray-700" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    >
+                      <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
                     </svg>
                   </button>
                 </div>
               </div>
+              
             </div>
 
             {/* Right Column - Seatmap */}
@@ -507,113 +528,163 @@ export default function EventDetail() {
         </TabsContent>
 
         {/* Venue Tab Content */}
-        <TabsContent value="venue" className="mt-6">
-          <div>
-            {event._embedded?.venues && event._embedded.venues[0] ? (
-              <>
-                {/* Venue Header */}
-                <div className="mb-6">
-                  {/* Venue Name */}
-                  <h2 className="text-2xl font-bold mb-2">{event._embedded.venues[0].name}</h2>
-                  
-                  {/* Address */}
-                  {event._embedded.venues[0].address && (
-                    <div className="mb-4">
-                      {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
-                        <a
-                          href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-base inline-flex items-center gap-1"
-                        >
-                          {[
-                            event._embedded.venues[0].address.line1,
-                            event._embedded.venues[0].city?.name,
-                            event._embedded.venues[0].state?.stateCode
-                          ].filter(Boolean).join(', ')}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <p className="text-base text-gray-700">
-                          {[
-                            event._embedded.venues[0].address.line1,
-                            event._embedded.venues[0].city?.name,
-                            event._embedded.venues[0].state?.stateCode
-                          ].filter(Boolean).join(', ')}
-                        </p>
+
+          <TabsContent value="venue" className="mt-6">
+            <div>
+              {event._embedded?.venues && event._embedded.venues[0] ? (
+                <>
+                  {/* Desktop Layout: Title and Button on same row */}
+                  <div className="hidden lg:flex justify-between items-start mb-6">
+                    <div className="flex-1">
+                      {/* Venue Name */}
+                      <h2 className="text-2xl font-bold mb-2">{event._embedded.venues[0].name}</h2>
+                      
+                      {/* Address */}
+                      {event._embedded.venues[0].address && (
+                        <div>
+                          {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
+                            <a
+                              href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline text-base inline-flex items-center gap-1"
+                            >
+                              {[
+                                event._embedded.venues[0].address.line1,
+                                event._embedded.venues[0].city?.name,
+                                event._embedded.venues[0].state?.stateCode
+                              ].filter(Boolean).join(', ')}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <p className="text-base text-gray-700">
+                              {[
+                                event._embedded.venues[0].address.line1,
+                                event._embedded.venues[0].city?.name,
+                                event._embedded.venues[0].state?.stateCode
+                              ].filter(Boolean).join(', ')}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                  
-                  {/* See Events Button - Full width on mobile, auto on desktop */}
-                  {event._embedded.venues[0].url && (
-                    <Button
-                      onClick={() => window.open(event._embedded.venues[0].url, '_blank')}
-                      variant="outline"
-                      className="w-full sm:w-auto flex items-center justify-center gap-2"
-                    >
-                      See Events
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-
-                {/* Two Column Layout: Image on left, Info on right */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Left Column - Venue Image */}
-                  <div>
-                    {event._embedded.venues[0].images?.[0] && (
-                      <div className="rounded-lg overflow-hidden border bg-white p-4">
-                        <img
-                          src={event._embedded.venues[0].images[0].url}
-                          alt={event._embedded.venues[0].name}
-                          className="w-full h-auto"
-                        />
-                      </div>
+                    
+                    {/* See Events Button - Desktop: Top right */}
+                    {event._embedded.venues[0].url && (
+                      <Button
+                        onClick={() => window.open(event._embedded.venues[0].url, '_blank')}
+                        variant="outline"
+                        className="flex items-center gap-2 ml-4 flex-shrink-0"
+                      >
+                        See Events
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
 
-                  {/* Right Column - Venue Information */}
-                  <div className="space-y-6">
-                    {/* Parking Info */}
-                    {event._embedded.venues[0].parkingDetail && (
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-2">Parking</h3>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {event._embedded.venues[0].parkingDetail}
-                        </p>
+                  {/* Mobile Layout: Stacked vertically */}
+                  <div className="lg:hidden mb-6">
+                    {/* Venue Name */}
+                    <h2 className="text-2xl font-bold mb-2">{event._embedded.venues[0].name}</h2>
+                    
+                    {/* Address */}
+                    {event._embedded.venues[0].address && (
+                      <div className="mb-4">
+                        {event._embedded.venues[0].location?.latitude && event._embedded.venues[0].location?.longitude ? (
+                          <a
+                            href={`https://www.google.com/maps?q=${event._embedded.venues[0].location.latitude},${event._embedded.venues[0].location.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-base inline-flex items-center gap-1"
+                          >
+                            {[
+                              event._embedded.venues[0].address.line1,
+                              event._embedded.venues[0].city?.name,
+                              event._embedded.venues[0].state?.stateCode
+                            ].filter(Boolean).join(', ')}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <p className="text-base text-gray-700">
+                            {[
+                              event._embedded.venues[0].address.line1,
+                              event._embedded.venues[0].city?.name,
+                              event._embedded.venues[0].state?.stateCode
+                            ].filter(Boolean).join(', ')}
+                          </p>
+                        )}
                       </div>
                     )}
-
-                    {/* General Rule */}
-                    {event._embedded.venues[0].generalInfo?.generalRule && (
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-2">General Rule</h3>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {event._embedded.venues[0].generalInfo.generalRule}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Child Rule */}
-                    {event._embedded.venues[0].generalInfo?.childRule && (
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-2">Child Rule</h3>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {event._embedded.venues[0].generalInfo.childRule}
-                        </p>
-                      </div>
+                    
+                    {/* See Events Button - Mobile: Full width, centered below address */}
+                    {event._embedded.venues[0].url && (
+                      <Button
+                        onClick={() => window.open(event._embedded.venues[0].url, '_blank')}
+                        variant="outline"
+                        className="w-full flex items-center justify-center gap-2"
+                      >
+                        See Events
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
+
+                  {/* Two Column Layout: Image on left, Info on right */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Left Column - Venue Image */}
+                    <div>
+                      {event._embedded.venues[0].images?.[0] && (
+                        <div className="rounded-lg overflow-hidden border bg-white p-4">
+                          <img
+                            src={event._embedded.venues[0].images[0].url}
+                            alt={event._embedded.venues[0].name}
+                            className="w-full h-auto"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column - Venue Information */}
+                    <div className="space-y-6">
+                      {/* Parking Info */}
+                      {event._embedded.venues[0].parkingDetail && (
+                        <div>
+                          <h3 className="font-semibold text-gray-900 mb-2">Parking</h3>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {event._embedded.venues[0].parkingDetail}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* General Rule */}
+                      {event._embedded.venues[0].generalInfo?.generalRule && (
+                        <div>
+                          <h3 className="font-semibold text-gray-900 mb-2">General Rule</h3>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {event._embedded.venues[0].generalInfo.generalRule}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Child Rule */}
+                      {event._embedded.venues[0].generalInfo?.childRule && (
+                        <div>
+                          <h3 className="font-semibold text-gray-900 mb-2">Child Rule</h3>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {event._embedded.venues[0].generalInfo.childRule}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No venue information available</p>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <p>No venue information available</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
+              )}
+            </div>
+          </TabsContent>
       </Tabs>
     </div>
   );
