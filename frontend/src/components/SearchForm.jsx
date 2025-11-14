@@ -30,6 +30,7 @@ function SearchForm({ onSearch, onClear }) {
     { value: 'Miscellaneous', label: 'Miscellaneous', segmentId: 'KZFzniwnSyZfZ7v7n1' },
   ]
 
+  // Close suggestions dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
@@ -40,6 +41,7 @@ function SearchForm({ onSearch, onClear }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Debounced autocomplete fetching
   useEffect(() => {
     const timer = setTimeout(() => {
       if (formData.keyword.trim().length > 0) {
@@ -157,12 +159,31 @@ function SearchForm({ onSearch, onClear }) {
     onClear()
   }
 
+  // 🔧 FIX: Prepare suggestions list with user input as first option
+  const getDisplaySuggestions = () => {
+    if (!formData.keyword.trim()) return []
+    
+    // Create array with user's typed value as first item
+    const userInputOption = {
+      name: formData.keyword,
+      id: 'user-input',
+      isUserInput: true
+    }
+    
+    // Filter out any API suggestions that exactly match user input
+    const filteredSuggestions = suggestions.filter(
+      s => s.name.toLowerCase() !== formData.keyword.toLowerCase()
+    )
+    
+    return [userInputOption, ...filteredSuggestions]
+  }
+
   return (
     <div className="w-full">
       <form onSubmit={handleSubmit}>
-        {/* 响应式布局: 移动端垂直, 桌面端水平 */}
+        {/* Responsive layout: vertical on mobile, horizontal on desktop */}
         <div className="flex flex-col md:flex-row md:items-center gap-3">
-          {/* Keywords */}
+          {/* Keywords Field with Autocomplete */}
           <div className="flex-1 min-w-0 md:min-w-[200px] relative" ref={suggestionsRef}>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Keywords <span className="text-red-500">*</span>
@@ -173,14 +194,22 @@ function SearchForm({ onSearch, onClear }) {
                 name="keyword"
                 value={formData.keyword}
                 onChange={handleChange}
-                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                onFocus={() => {
+                  if (formData.keyword.trim().length > 0) {
+                    setShowSuggestions(true)
+                  }
+                }}
                 placeholder="Search for events..."
                 className={`h-9 text-sm pr-16 ${errors.keyword ? 'border-red-500' : ''}`}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 {loadingSuggestions && <Loader2 className="h-3 w-3 animate-spin text-gray-400" />}
                 {formData.keyword && (
-                  <button type="button" onClick={clearKeyword} className="p-0.5 hover:bg-gray-100 rounded">
+                  <button 
+                    type="button" 
+                    onClick={clearKeyword} 
+                    className="p-0.5 hover:bg-gray-100 rounded"
+                  >
                     <X className="h-3 w-3 text-gray-400" />
                   </button>
                 )}
@@ -188,14 +217,16 @@ function SearchForm({ onSearch, onClear }) {
               </div>
             </div>
             
-            {/* Autocomplete下拉列表 */}
-            {showSuggestions && suggestions.length > 0 && (
+            {/* 🔧 FIX: Autocomplete dropdown with user input as first option */}
+            {showSuggestions && formData.keyword.trim().length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                {suggestions.map((suggestion, index) => (
+                {getDisplaySuggestions().map((suggestion, index) => (
                   <div
                     key={suggestion.id || index}
                     onClick={() => selectSuggestion(suggestion)}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                      suggestion.isUserInput ? 'font-medium border-b' : ''
+                    }`}
                   >
                     {suggestion.name}
                   </div>
@@ -205,7 +236,7 @@ function SearchForm({ onSearch, onClear }) {
             {errors.keyword && <p className="text-xs text-red-500 mt-1">{errors.keyword}</p>}
           </div>
 
-          {/* Category */}
+          {/* Category Dropdown */}
           <div className="w-full md:w-32">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Category <span className="text-red-500">*</span>
@@ -224,7 +255,7 @@ function SearchForm({ onSearch, onClear }) {
             </select>
           </div>
 
-          {/* Location */}
+          {/* Location Field */}
           <div className="flex-1 min-w-0 md:min-w-[180px]">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Location <span className="text-red-500">*</span>
@@ -235,12 +266,14 @@ function SearchForm({ onSearch, onClear }) {
               onChange={handleChange}
               disabled={formData.autoDetect}
               placeholder="Enter location..."
-              className={`h-9 text-sm ${errors.location ? 'border-red-500' : ''}`}
+              className={`h-9 text-sm ${errors.location ? 'border-red-500' : ''} ${
+                formData.autoDetect ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
             />
             {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
           </div>
 
-          {/* Auto-detect Location */}
+          {/* Auto-detect Location Switch */}
           <div className="flex items-center gap-2 md:pb-[2px]">
             <Switch
               checked={formData.autoDetect}
@@ -260,7 +293,7 @@ function SearchForm({ onSearch, onClear }) {
             </label>
           </div>
 
-          {/* Distance */}
+          {/* Distance Field */}
           <div className="w-full md:w-28">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Distance <span className="text-red-500">*</span>
