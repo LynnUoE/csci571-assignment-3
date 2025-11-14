@@ -26,7 +26,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// API Routes
+// API Routes - MUST come BEFORE static file serving
 app.use('/api/events', eventsRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/artists', artistsRouter);
@@ -36,18 +36,27 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Serve frontend static files (for production)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+// Serve frontend static files
+const frontendPath = path.join(__dirname, 'dist');
+console.log('📂 Serving frontend from:', frontendPath);
+
+app.use(express.static(frontendPath));
+
+// Catch-all route - serve index.html for any non-API routes
+// This enables client-side routing (React Router, etc.)
+app.get('*', (req, res) => {
+  // Don't serve index.html for API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
   
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-  });
-}
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -57,11 +66,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not Found' });
-});
-
 // Start server and connect to database
 async function startServer() {
   try {
@@ -69,10 +73,12 @@ async function startServer() {
     await connectDB();
     
     // Start Express server
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    // Listen on 0.0.0.0 for GCP
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 API endpoints available at: http://localhost:${PORT}/api`);
+      console.log(`🔗 API endpoints available at: http://0.0.0.0:${PORT}/api`);
+      console.log(`📂 Serving frontend from: ${frontendPath}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
@@ -83,6 +89,13 @@ async function startServer() {
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down gracefully...');
+  const { closeDB } = require('./db/mongodb');
+  await closeDB();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 SIGTERM received, shutting down gracefully...');
   const { closeDB } = require('./db/mongodb');
   await closeDB();
   process.exit(0);

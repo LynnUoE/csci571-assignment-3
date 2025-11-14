@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const fetch = require('node-fetch');
-const geohash = require('ngeohash');
+const ngeohash = require('ngeohash'); // Import ngeohash library
 
 const API_KEY = process.env.TICKETMASTER_API_KEY;
 const BASE_URL = 'https://app.ticketmaster.com/discovery/v2';
@@ -43,8 +43,9 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'Location (lat/lng) is required' });
     }
 
-    // Convert lat/lng to geohash (7 precision for ~150m accuracy)
-    const geoPoint = geohash.encode(parseFloat(lat), parseFloat(lng), 7);
+    // Convert lat/lng to geohash using ngeohash library
+    // Use 7 precision for ~150m accuracy
+    const geoPoint = ngeohash.encode(parseFloat(lat), parseFloat(lng), 7);
 
     // Build URL with parameters
     let url = `${BASE_URL}/events.json?apikey=${API_KEY}&keyword=${encodeURIComponent(keyword)}&geoPoint=${geoPoint}&radius=${radius || 10}&unit=miles`;
@@ -54,7 +55,7 @@ router.get('/search', async (req, res) => {
       url += `&segmentId=${segmentId}`;
     }
 
-    console.log('Searching events:', { keyword, lat, lng, radius, segmentId });
+    console.log('Searching events:', { keyword, lat, lng, radius, segmentId, geoPoint });
     
     const response = await fetch(url);
     
@@ -66,7 +67,7 @@ router.get('/search', async (req, res) => {
     res.json(data);
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).json({ error: 'Failed to search events' });
+    res.status(500).json({ error: 'Failed to search events', details: error.message });
   }
 });
 
