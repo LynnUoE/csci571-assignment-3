@@ -10,18 +10,26 @@ function Home() {
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState(null)
 
+  // After receiving events from API, sort them
   const handleSearch = async (searchParams) => {
     setLoading(true)
     setError(null)
-    setSearched(true)
     
     try {
       const data = await apiService.searchEvents(searchParams)
-      setEvents(data._embedded?.events || [])
+      const eventsData = data._embedded?.events || []
+      
+      // Sort events by date and time in ascending order
+      const sortedEvents = eventsData.sort((a, b) => {
+        const dateA = new Date(`${a.dates?.start?.localDate || '9999-12-31'}T${a.dates?.start?.localTime || '00:00:00'}`)
+        const dateB = new Date(`${b.dates?.start?.localDate || '9999-12-31'}T${b.dates?.start?.localTime || '00:00:00'}`)
+        return dateA - dateB
+      })
+      
+      setEvents(sortedEvents)
+      setSearched(true)
     } catch (err) {
-      console.error('Error searching events:', err)
-      setError('Failed to search events. Please try again.')
-      setEvents([])
+      setError(err.message)
     } finally {
       setLoading(false)
     }

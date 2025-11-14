@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { getAllFavorites, removeFromFavorites } from '../utils/FavoritesUtils';
+import { getAllFavorites, removeFromFavorites } from '../utils/favoritesUtils';
 
 export default function Favorites() {
   const navigate = useNavigate();
