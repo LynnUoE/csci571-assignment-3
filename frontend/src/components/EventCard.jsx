@@ -1,98 +1,65 @@
-// frontend/src/components/EventCard.jsx
-
-import { useNavigate } from 'react-router-dom';
-import { Card } from './ui/card';
-import { Heart } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Heart } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { addToFavorites, removeFromFavorites, checkIsFavorite } from '../utils/favoritesUtils';
 
-function EventCard({ event, onFavoriteChange }) {
+function EventCard({ event }) {
   const navigate = useNavigate();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    loadFavoriteStatus();
-
-    // Listen for favorites updates
-    const handleFavoritesUpdate = () => {
-      loadFavoriteStatus();
+    const fetchFavoriteStatus = async () => {
+      const status = await checkIsFavorite(event.id);
+      setIsFavorite(status);
     };
-
-    window.addEventListener('favorites-updated', handleFavoritesUpdate);
-    
-    return () => {
-      window.removeEventListener('favorites-updated', handleFavoritesUpdate);
-    };
+    fetchFavoriteStatus();
   }, [event.id]);
 
-  const loadFavoriteStatus = async () => {
-    const status = await checkIsFavorite(event.id);
-    setIsFavorite(status);
-  };
-
-  const handleCardClick = (e) => {
-    // Don't navigate if clicking the favorite button
-    if (e.target.closest('.favorite-button')) {
-      return;
-    }
+  const handleCardClick = () => {
     navigate(`/event/${event.id}`);
   };
 
   const handleFavoriteClick = async (e) => {
-    e.stopPropagation();
-    
-    if (isLoading) return;
-    
+    e.stopPropagation(); // Prevent card click
     setIsLoading(true);
-    
     try {
       if (isFavorite) {
-        const result = await removeFromFavorites(event);
-        if (result.success) {
-          setIsFavorite(false);
-          if (onFavoriteChange) {
-            onFavoriteChange();
-          }
-        }
+        await removeFromFavorites(event);
+        setIsFavorite(false);
       } else {
-        const result = await addToFavorites(event);
-        if (result.success) {
-          setIsFavorite(true);
-          if (onFavoriteChange) {
-            onFavoriteChange();
-          }
-        }
+        await addToFavorites(event);
+        setIsFavorite(true);
       }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+  // Helper functions
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
     });
   };
 
-  const formatTime = (dateString, timeString) => {
-    if (!dateString || !timeString) return '';
-    const date = new Date(`${dateString}T${timeString}`);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   const getImageUrl = () => {
-    if (event.images && event.images.length > 0) {
-      return event.images[0].url;
-    }
-    return 'https://via.placeholder.com/400x300?text=No+Image';
+    return event.images?.[0]?.url || 'https://via.placeholder.com/400x300?text=No+Image';
   };
 
   const getVenueName = () => {
@@ -118,50 +85,46 @@ function EventCard({ event, onFavoriteChange }) {
           }}
         />
         
-        {/* Category Badge */}
+        {/* Category Badge - Top Left */}
         <div className="absolute top-3 left-3">
-          <span className="px-3 py-1 bg-white text-gray-900 text-xs font-semibold rounded-full">
+          <span className="px-3 py-1 bg-white text-gray-900 text-xs font-medium rounded-full shadow-sm">
             {getGenre()}
           </span>
         </div>
         
-        {/* Date Badge */}
+        {/* Date Badge - Top Right */}
         {event.dates?.start?.localDate && (
           <div className="absolute top-3 right-3">
-            <span className="px-3 py-1 bg-gray-900 text-white text-xs font-semibold rounded">
+            <span className="px-3 py-1 bg-white text-gray-900 text-xs font-medium rounded-md shadow-sm">
               {formatDate(event.dates.start.localDate)}
               {event.dates.start.localTime && (
-                <>, {formatTime(event.dates.start.localDate, event.dates.start.localTime)}</>
+                <>, {formatTime(event.dates.start.localTime)}</>
               )}
             </span>
           </div>
         )}
-        
-        {/* Favorite Button */}
-        <button
-          className="favorite-button absolute bottom-3 right-3 p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-50"
-          onClick={handleFavoriteClick}
-          disabled={isLoading}
-        >
-          <Heart
-            className={`h-5 w-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-700'}`}
-          />
-        </button>
       </div>
 
       {/* Event Info */}
-      <div className="p-4">
-        <h3 className="font-semibold text-lg mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">
+      <div className="p-4 relative">
+        <h3 className="font-semibold text-lg mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors pr-10">
           {event.name}
         </h3>
-        <p className="text-sm text-gray-600 mb-1">
+        <p className="text-sm text-gray-500">
           {getVenueName()}
         </p>
-        {event.dates?.start?.localDate && event.dates.start.localTime && (
-          <p className="text-xs text-gray-500">
-            {formatDate(event.dates.start.localDate)} • {formatTime(event.dates.start.localDate, event.dates.start.localTime)}
-          </p>
-        )}
+        
+        {/* Favorite Button - Bottom Right of Card */}
+        <button
+          className="absolute bottom-4 right-4 p-2 hover:scale-110 transition-transform disabled:opacity-50"
+          onClick={handleFavoriteClick}
+          disabled={isLoading}
+          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          <Heart
+            className={`h-6 w-6 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
+          />
+        </button>
       </div>
     </Card>
   );
