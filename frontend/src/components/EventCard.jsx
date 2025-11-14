@@ -75,6 +75,7 @@ function EventCard({ event }) {
       className="overflow-hidden hover:shadow-xl transition-all cursor-pointer group"
       onClick={handleCardClick}
     >
+      {/* Event Image with badges */}
       <div className="relative">
         <img
           src={getImageUrl()}
@@ -105,24 +106,31 @@ function EventCard({ event }) {
         )}
       </div>
 
-      {/* Event Info */}
+      {/* Event Info - with favorite button inside */}
       <div className="p-4 relative">
-        <h3 className="font-semibold text-lg mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors pr-10">
-          {event.name}
-        </h3>
-        <p className="text-sm text-gray-500">
-          {getVenueName()}
-        </p>
+        {/* Event name and venue - leave space for heart icon on the right */}
+        <div className="pr-10">
+          <h3 className="font-semibold text-lg mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">
+            {event.name}
+          </h3>
+          <p className="text-sm text-gray-500">
+            {getVenueName()}
+          </p>
+        </div>
         
-        {/* Favorite Button - Bottom Right of Card */}
+        {/* Favorite Button - Bottom Right corner of the info section */}
         <button
-          className="absolute bottom-4 right-4 p-2 hover:scale-110 transition-transform disabled:opacity-50"
+          className="absolute bottom-3 right-3 p-1.5 hover:scale-110 transition-transform disabled:opacity-50"
           onClick={handleFavoriteClick}
           disabled={isLoading}
           aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
         >
           <Heart
-            className={`h-6 w-6 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
+            className={`h-6 w-6 transition-colors ${
+              isFavorite 
+                ? 'fill-red-500 text-red-500' 
+                : 'fill-none text-gray-400 stroke-2'
+            }`}
           />
         </button>
       </div>
